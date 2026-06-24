@@ -137,8 +137,16 @@ $(document).ready(function () {
         $("#qty").val(book.Stock ? book.Stock.quantity : 0);
 
         if (book.img_path) {
+          let images = [];
+
+          try {
+            images = JSON.parse(book.img_path);
+          } catch (error) {
+            images = [book.img_path];
+          }
+
           $("#bform").append(
-            `<div id="bookImagePreview" class="mt-3"><img src="${url}/${book.img_path}" width="100" class="rounded border"/></div>`,
+            `<div id="bookImagePreview" class="mt-3"><img src="${url}/${images[0]}" width="100" class="rounded border"/></div>`,
           );
         }
       },

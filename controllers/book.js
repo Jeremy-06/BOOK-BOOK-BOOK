@@ -81,6 +81,7 @@ exports.updateBook = async (req, res, next) => {
     const imagePaths = req.files
       ? req.files.map((file) => file.path.replace(/\\/g, "/"))
       : [];
+    const existingBook = await Book.findByPk(id);
 
     if (!title || !author || !price || !isbn) {
       return res.status(400).json({ error: "Missing required fields" });
@@ -95,7 +96,20 @@ exports.updateBook = async (req, res, next) => {
     };
 
     if (imagePaths.length > 0) {
-      updateData.img_path = JSON.stringify(imagePaths);
+      let existingImagePaths = [];
+
+      if (existingBook?.img_path) {
+        try {
+          existingImagePaths = JSON.parse(existingBook.img_path);
+        } catch (error) {
+          existingImagePaths = [existingBook.img_path];
+        }
+      }
+
+      updateData.img_path = JSON.stringify([
+        ...existingImagePaths,
+        ...imagePaths,
+      ]);
     }
 
     await Book.update(updateData, { where: { book_id: id } });
