@@ -128,13 +128,11 @@ const updateUser = async (req, res) => {
       });
     }
 
-    return res
-      .status(200)
-      .json({
-        success: true,
-        message: "Profile updated successfully",
-        customer,
-      });
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      customer,
+    });
   } catch (error) {
     console.log(error);
     return res
@@ -154,14 +152,12 @@ const deactivateUser = async (req, res) => {
     const timestamp = new Date();
     await user.update({ deleted_at: timestamp });
 
-    return res
-      .status(200)
-      .json({
-        success: true,
-        message: "User deactivated successfully",
-        email,
-        deleted_at: timestamp,
-      });
+    return res.status(200).json({
+      success: true,
+      message: "User deactivated successfully",
+      email,
+      deleted_at: timestamp,
+    });
   } catch (error) {
     console.log(error);
     return res
@@ -180,14 +176,12 @@ const reactivateUser = async (req, res) => {
 
     await user.update({ deleted_at: null });
 
-    return res
-      .status(200)
-      .json({
-        success: true,
-        message: "User reactivated successfully",
-        email,
-        deleted_at: null,
-      });
+    return res.status(200).json({
+      success: true,
+      message: "User reactivated successfully",
+      email,
+      deleted_at: null,
+    });
   } catch (error) {
     console.log(error);
     return res
@@ -196,9 +190,38 @@ const reactivateUser = async (req, res) => {
   }
 };
 
+const getUserProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findByPk(id, {
+      attributes: { exclude: ["password"] },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const customer = await Customer.findOne({
+      where: { user_id: id },
+    });
+
+    return res
+      .status(200)
+      .json({
+        success: true,
+        result: { ...user.toJSON(), Customer: customer },
+      });
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(500)
+      .json({ error: "Error fetching profile", details: error.message });
+  }
+};
+
 const getAllUsers = async (req, res) => {
   try {
-    // Kukunin lahat ng users pero itatago ang password para secure
     const users = await User.findAll({ attributes: { exclude: ["password"] } });
     return res.status(200).json({ rows: users });
   } catch (error) {
@@ -226,6 +249,7 @@ module.exports = {
   updateUser,
   deactivateUser,
   reactivateUser,
+  getUserProfile,
   getAllUsers,
   updateUserRole,
 };

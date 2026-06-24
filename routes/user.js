@@ -8,6 +8,7 @@ const {
   updateUser,
   deactivateUser,
   reactivateUser,
+  getUserProfile,
   getAllUsers,
   updateUserRole,
 } = require("../controllers/user");
@@ -17,6 +18,7 @@ router.post("/login", loginUser);
 router.post("/update-profile", upload.single("image"), updateUser);
 router.delete("/deactivate", deactivateUser);
 router.put("/reactivate", reactivateUser);
+router.get("/profile/:id", getUserProfile);
 router.get("/", getAllUsers);
 router.put("/:id/role", updateUserRole);
 

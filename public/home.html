@@ -165,6 +165,21 @@
               <a class="nav-link active" href="home.html">Home</a>
             </li>
             <li class="nav-item">
+              <button
+                class="btn btn-outline-light btn-sm position-relative"
+                type="button"
+                id="viewCartBtn"
+              >
+                <i class="fas fa-shopping-cart me-1"></i>Cart
+                <span
+                  class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark"
+                  id="cartCount"
+                >
+                  0
+                </span>
+              </button>
+            </li>
+            <li class="nav-item">
               <a class="nav-link" href="login.html" id="loginLink">Login</a>
             </li>
           </ul>
@@ -352,6 +367,53 @@
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="offcanvas offcanvas-end"
+      tabindex="-1"
+      id="cartCanvas"
+      aria-labelledby="cartCanvasLabel"
+    >
+      <div class="offcanvas-header border-bottom">
+        <div>
+          <p class="mb-0 text-uppercase small text-muted">Your Cart</p>
+          <h5 class="offcanvas-title mb-0" id="cartCanvasLabel">
+            Selected Items
+          </h5>
+        </div>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="offcanvas"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="offcanvas-body d-flex flex-column gap-3">
+        <div id="cartItems" class="d-flex flex-column gap-3"></div>
+        <div id="cartEmptyState" class="empty-state text-center d-none">
+          <i class="fas fa-shopping-cart fa-2x mb-3 text-secondary"></i>
+          <h3 class="h5">Your cart is empty</h3>
+          <p class="text-muted mb-0">
+            Add products from the catalog to start building your cart.
+          </p>
+        </div>
+        <div class="mt-auto pt-3 border-top">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="fw-semibold">Total</span>
+            <span class="fs-4 fw-bold" id="cartTotal">₱0.00</span>
+          </div>
+          <div class="d-grid gap-2">
+            <button
+              type="button"
+              class="btn btn-outline-danger"
+              id="clearCartBtn"
+            >
+              Clear Cart
+            </button>
           </div>
         </div>
       </div>
