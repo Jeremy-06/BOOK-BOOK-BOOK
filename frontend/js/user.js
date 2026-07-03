@@ -1,16 +1,18 @@
 // User script
 $(document).ready(function () {
-  const url = "http://localhost:3000";
+  //const url = "http://localhost:3000";
+  const url = `http://${window.location.hostname}:3000`;
 
   $("#registerBtn").on("click", function (e) {
     e.preventDefault();
 
-    let name = $("#name").val();
+    let first_name = $("#firstName").val();
+    let last_name = $("#lastName").val();
     let email = $("#email").val();
     let password = $("#password").val();
     let confirmPassword = $("#confirmPassword").val();
 
-    if (!name || !email || !password || !confirmPassword) {
+    if (!first_name || !last_name || !email || !password || !confirmPassword) {
       return Swal.fire({ icon: "error", text: "Please fill in all fields." });
     }
 
@@ -18,7 +20,7 @@ $(document).ready(function () {
       return Swal.fire({ icon: "error", text: "Passwords do not match." });
     }
 
-    let user = { name, email, password };
+    let user = { first_name, last_name, email, password };
 
     $.ajax({
       method: "POST",
@@ -78,7 +80,8 @@ $(document).ready(function () {
         }).then(() => {
           sessionStorage.setItem("token", JSON.stringify(data.token));
           sessionStorage.setItem("userId", JSON.stringify(data.user.id));
-          sessionStorage.setItem("userName", data.user.name || "");
+          sessionStorage.setItem("userFirstName", data.user.first_name || "");
+          sessionStorage.setItem("userLastName", data.user.last_name || "");
           sessionStorage.setItem("userEmail", data.user.email || "");
           sessionStorage.setItem("role", data.user.role);
           window.location.href = "home.html";

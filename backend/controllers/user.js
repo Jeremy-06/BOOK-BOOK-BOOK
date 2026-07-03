@@ -4,20 +4,24 @@ const Customer = db.Customer;
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
+const getFullName = (user) =>
+  `${user.first_name || ""} ${user.last_name || ""}`.trim();
+
 const registerUser = async (req, res) => {
   try {
-    const { name, password, email } = req.body;
+    const { first_name, last_name, password, email } = req.body;
 
-    if (!name || !password || !email) {
+    if (!first_name || !last_name || !password || !email) {
       return res
         .status(400)
-        .json({ error: "Name, email, and password are required" });
+        .json({ error: "First name, last name, email, and password are required" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await User.create({
-      name,
+      first_name,
+      last_name,
       email,
       password: hashedPassword,
     });
@@ -27,7 +31,9 @@ const registerUser = async (req, res) => {
       message: "User registered successfully",
       user: {
         id: user.id,
-        name: user.name,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        full_name: getFullName(user),
         email: user.email,
       },
     });
@@ -72,12 +78,18 @@ const loginUser = async (req, res) => {
       process.env.JWT_SECRET || "secret_key",
     );
 
+    await user.update(
+      { token: token }
+    );
+
     return res.status(200).json({
       success: true,
       message: "Welcome back",
       user: {
         id: user.id,
-        name: user.name,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        full_name: getFullName(user),
         email: user.email,
         role: user.role,
       },
@@ -99,32 +111,32 @@ const updateUser = async (req, res) => {
       return res.status(400).json({ error: "User ID is required" });
     }
 
-    let imagePath = null;
-    if (req.file) {
-      imagePath = req.file.path.replace(/\\/g, "/");
+    const user = await User.findByPk(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
     }
+
+    await user.update({
+      first_name: fname || user.first_name,
+      last_name: lname || user.last_name,
+    });
 
     const [customer, created] = await Customer.findOrCreate({
       where: { user_id: userId },
       defaults: {
-        fname,
-        lname,
-        addressline,
-        zipcode,
         phone,
-        image_path: imagePath,
+        address: addressline,
+        zip_code: zipcode,
         user_id: userId,
       },
     });
 
     if (!created) {
       await customer.update({
-        fname: fname || customer.fname,
-        lname: lname || customer.lname,
-        addressline: addressline || customer.addressline,
-        zipcode: zipcode || customer.zipcode,
         phone: phone || customer.phone,
-        image_path: imagePath || customer.image_path,
+        address: addressline || customer.address,
+        zip_code: zipcode || customer.zip_code,
       });
     }
 
@@ -132,6 +144,80 @@ const updateUser = async (req, res) => {
       success: true,
       message: "Profile updated successfully",
       customer,
+    });
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(500)
+      .json({ error: "Error updating profile", details: error.message });
+  }
+};
+
+const getProfile = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id, {
+      attributes: { exclude: ["password", "token"] },
+      include: [{ model: Customer }],
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(500)
+      .json({ error: "Error fetching profile", details: error.message });
+  }
+};
+
+const updateProfile = async (req, res) => {
+  try {
+    const { first_name, last_name, phone, zip_code, address } = req.body;
+
+    const user = await User.findByPk(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    await user.update({
+      first_name,
+      last_name,
+    });
+
+    const [customer, created] = await Customer.findOrCreate({
+      where: { user_id: req.user.id },
+      defaults: {
+        user_id: req.user.id,
+        phone,
+        address,
+        zip_code,
+      },
+    });
+
+    if (!created) {
+      await customer.update({
+        phone,
+        address,
+        zip_code,
+      });
+    }
+
+    const updatedUser = await User.findByPk(req.user.id, {
+      attributes: { exclude: ["password", "token"] },
+      include: [{ model: Customer }],
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      user: updatedUser,
     });
   } catch (error) {
     console.log(error);
@@ -247,6 +333,8 @@ module.exports = {
   registerUser,
   loginUser,
   updateUser,
+  getProfile,
+  updateProfile,
   deactivateUser,
   reactivateUser,
   getUserProfile,

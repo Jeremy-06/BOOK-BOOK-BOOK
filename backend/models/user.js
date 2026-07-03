@@ -5,10 +5,6 @@ module.exports = (sequelize, DataTypes) => {
             primaryKey: true,
             autoIncrement: true
         },
-        name: {
-            type: DataTypes.STRING(255),
-            allowNull: false
-        },
         email: {
             type: DataTypes.STRING(255),
             allowNull: false,
@@ -18,13 +14,25 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.STRING(255),
             allowNull: false
         },
+        first_name: {
+            type: DataTypes.STRING,
+            allowNull: true
+        },
+        last_name: {
+            type: DataTypes.STRING,
+            allowNull: true
+        },
         role: {
             type: DataTypes.STRING(50),
-            defaultValue: 'user' // Default ay normal user kapag nag-register
+            defaultValue: 'user'
         },
         deleted_at: {
             type: DataTypes.DATE,
             allowNull: true
+        },
+        token: {
+        type: DataTypes.TEXT,
+        allowNull: true
         }
     }, {
         tableName: 'users',

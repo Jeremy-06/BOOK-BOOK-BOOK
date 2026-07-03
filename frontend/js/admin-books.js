@@ -1,5 +1,6 @@
 $(document).ready(function () {
-  const url = "http://localhost:3000";
+  //const url = "http://localhost:3000";
+  const url = `http://${window.location.hostname}:3000`;
 
   // 1. Security Check: Admin lang pwede rito!
   const rawToken = sessionStorage.getItem("token");

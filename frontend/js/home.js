@@ -1,5 +1,6 @@
 $(document).ready(function () {
-  const url = "http://localhost:3000";
+  //const url = "http://localhost:3000";
+  const url = `http://${window.location.hostname}:3000`;
   const cartKey = "bookShopCart";
   const rawToken = sessionStorage.getItem("token");
   const token = rawToken ? rawToken.replace(/"/g, "") : null;
@@ -544,6 +545,20 @@ $(document).ready(function () {
       error: function (error) {
         console.error("5. Error response from backend:", error); // DEBUGGER
         btn.prop("disabled", false).html('<i class="fas fa-credit-card me-2"></i>Confirm Payment & Place Order');
+
+        if (error.responseJSON && error.responseJSON.error === "IncompleteProfile") {
+          Swal.fire({
+            icon: "warning",
+            title: "Profile Incomplete",
+            text: error.responseJSON.message,
+            timer: 2200,
+            showConfirmButton: false,
+          }).then(() => {
+            window.location.href = "profile.html";
+          });
+          return;
+        }
+
         Swal.fire({
           icon: "error",
           text: error.responseJSON && error.responseJSON.error ? error.responseJSON.error : "Transaction failed. Please try again.",

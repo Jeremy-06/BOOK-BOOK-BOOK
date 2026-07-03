@@ -1,5 +1,6 @@
 $(document).ready(function () {
-  const url = "http://localhost:3000";
+  //const url = "http://localhost:3000";
+  const url = `http://${window.location.hostname}:3000`;
   const rawToken = sessionStorage.getItem("token");
   const token = rawToken ? rawToken.replace(/"/g, "") : null;
 
@@ -16,6 +17,10 @@ $(document).ready(function () {
 
   let allOrders = []; // Dito natin ise-save ang data para makuha mamaya sa modal
 
+  function getFullName(user) {
+    return user ? `${user.first_name || ""} ${user.last_name || ""}`.trim() || "Unknown User" : "Unknown User";
+  }
+
   // Initialize DataTable
   const table = $("#ordersTable").DataTable({
     ajax: {
@@ -30,7 +35,7 @@ $(document).ready(function () {
       { data: "id", render: (data) => `<strong>#${data}</strong>` },
       {
         data: "User",
-        render: (data) => (data ? data.name : "Unknown User"),
+        render: (data) => getFullName(data),
       },
       {
         data: "date_placed",
@@ -88,7 +93,7 @@ $(document).ready(function () {
     if (!order) return;
 
     $("#modalOrderId").text(order.id);
-    $("#modalCustomer").text(order.User ? order.User.name : "Unknown");
+    $("#modalCustomer").text(getFullName(order.User));
     $("#modalEmail").text(order.User ? order.User.email : "N/A");
 
     let itemsHtml = "";

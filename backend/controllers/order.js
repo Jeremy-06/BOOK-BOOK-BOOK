@@ -2,6 +2,7 @@ const db = require('../models');
 const Order = db.Order;
 const OrderLine = db.OrderLine;
 const Stock = db.Stock;
+const Customer = db.Customer;
 const sequelize = db.sequelize;
 
 const createOrder = async (req, res) => {
@@ -18,6 +19,21 @@ const createOrder = async (req, res) => {
 
         if (!cart || cart.length === 0) {
             return res.status(400).json({ error: 'Cart is empty' });
+        }
+
+        const customer = await Customer.findOne({
+            where: { user_id: userId }
+        });
+
+        if (
+            !customer ||
+            !String(customer.phone || '').trim() ||
+            !String(customer.address || '').trim()
+        ) {
+            return res.status(403).json({
+                error: 'IncompleteProfile',
+                message: 'Please update your profile address and phone number before placing an order.'
+            });
         }
 
         console.log('createOrder before transaction');
@@ -82,7 +98,7 @@ const getAllOrders = async (req, res) => {
     try {
         const orders = await Order.findAll({
             include: [
-                { model: db.User, attributes: ['id', 'name', 'email'] },
+                { model: db.User, attributes: ['id', 'first_name', 'last_name', 'email'] },
                 { 
                     model: db.OrderLine, 
                     include: [{ model: db.Book, attributes: ['title', 'price'] }] 

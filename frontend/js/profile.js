@@ -1,24 +1,19 @@
 $(document).ready(function () {
-  const url = "http://localhost:3000";
+  //const url = "http://localhost:3000";
+  const url = `http://${window.location.hostname}:3000`;
   const rawToken = sessionStorage.getItem("token");
   const token = rawToken ? rawToken.replace(/"/g, "") : null;
-  const userIdRaw = sessionStorage.getItem("userId");
-  const sessionName = sessionStorage.getItem("userName") || "-";
+  const sessionFirstName = sessionStorage.getItem("userFirstName") || "";
+  const sessionLastName = sessionStorage.getItem("userLastName") || "";
   const sessionEmail = sessionStorage.getItem("userEmail") || "-";
 
-  if (!token || !userIdRaw) {
+  if (!token) {
     window.location.href = "login.html";
     return;
   }
 
-  let userId = userIdRaw;
+  const authHeaders = { Authorization: "Bearer " + token };
   let allOrders = [];
-
-  try {
-    userId = JSON.parse(userIdRaw);
-  } catch (error) {
-    userId = userIdRaw;
-  }
 
   function parsePrice(price) {
     const value = Number(price);
@@ -38,12 +33,50 @@ $(document).ready(function () {
     });
   }
 
+  function displayValue(value) {
+    return value ? value : "-";
+  }
+
+  function getProfileUser(data) {
+    return data.user || data.result || data;
+  }
+
+  function getFullName(user) {
+    return `${user.first_name || ""} ${user.last_name || ""}`.trim();
+  }
+
+  function updateProfileDisplay(user) {
+    const customer = user.Customer || user.customer || {};
+    const firstName = user.first_name || "";
+    const lastName = user.last_name || "";
+    const phone = customer.phone || "";
+    const zipCode = customer.zip_code || "";
+    const address = customer.address || "";
+
+    $("#profileName").text(getFullName(user) || `${sessionFirstName} ${sessionLastName}`.trim() || "-");
+    $("#profileEmail").text(user.email || sessionEmail);
+    $("#profileFirstName").text(displayValue(firstName));
+    $("#profileLastName").text(displayValue(lastName));
+    $("#profilePhone").text(displayValue(phone));
+    $("#profileZipcode").text(displayValue(zipCode));
+    $("#profileAddress").text(displayValue(address));
+
+    $("#editFirstName").val(firstName);
+    $("#editLastName").val(lastName);
+    $("#editPhone").val(phone);
+    $("#editZipCode").val(zipCode);
+    $("#editAddress").val(address);
+
+  }
+
+  function getOrderLines(order) {
+    return order.OrderLines || order.orderlines || order.order_lines || [];
+  }
+
   function getOrderTotal(order) {
-    const itemsTotal = order.OrderLines
-      ? order.OrderLines.reduce((sum, item) => {
-          return sum + parsePrice(item.price) * item.quantity;
-        }, 0)
-      : 0;
+    const itemsTotal = getOrderLines(order).reduce((sum, item) => {
+      return sum + parsePrice(item.price) * parsePrice(item.quantity);
+    }, 0);
     return itemsTotal + parsePrice(order.shipping_fee || 100);
   }
 
@@ -92,26 +125,14 @@ $(document).ready(function () {
   function loadProfile() {
     $.ajax({
       method: "GET",
-      url: `${url}/api/v1/users/profile/${userId}`,
+      url: `${url}/api/v1/users/profile`,
       dataType: "json",
+      headers: authHeaders,
       success: function (data) {
-        const user = data.result || data.user || data;
-        const customer = user.Customer || user.customer || {};
-
-        $("#profileName").text(user.name || sessionName);
-        $("#profileEmail").text(user.email || sessionEmail);
-        $("#profileFirstName").text(customer.fname || "-");
-        $("#profileLastName").text(customer.lname || "-");
-        $("#profilePhone").text(customer.phone || "-");
-        $("#profileZipcode").text(customer.zipcode || "-");
-        $("#profileAddress").text(customer.addressline || "-");
-
-        if (customer.image_path) {
-          $("#profileAvatar").attr("src", `${url}/${customer.image_path}`);
-        }
+        updateProfileDisplay(getProfileUser(data));
       },
       error: function () {
-        $("#profileName").text(sessionName);
+        $("#profileName").text(`${sessionFirstName} ${sessionLastName}`.trim() || "-");
         $("#profileEmail").text(sessionEmail);
         Swal.fire({
           icon: "warning",
@@ -126,9 +147,9 @@ $(document).ready(function () {
       method: "GET",
       url: `${url}/api/v1/orders/me`,
       dataType: "json",
-      headers: { Authorization: "Bearer " + token },
+      headers: authHeaders,
       success: function (data) {
-        allOrders = data.rows || [];
+        allOrders = Array.isArray(data) ? data : data.rows || data.orders || [];
         renderOrders(allOrders);
       },
       error: function (error) {
@@ -147,6 +168,58 @@ $(document).ready(function () {
     });
   }
 
+  $("#editProfileForm").on("submit", function (e) {
+    e.preventDefault();
+
+    const profileData = {
+      first_name: $("#editFirstName").val(),
+      last_name: $("#editLastName").val(),
+      phone: $("#editPhone").val(),
+      zip_code: $("#editZipCode").val(),
+      address: $("#editAddress").val(),
+    };
+
+    $("#saveProfileBtn").prop("disabled", true).text("Saving...");
+
+    $.ajax({
+      method: "PUT",
+      url: `${url}/api/v1/users/profile`,
+      data: JSON.stringify(profileData),
+      contentType: "application/json; charset=utf-8",
+      dataType: "json",
+      headers: authHeaders,
+      success: function (data) {
+        const modal = bootstrap.Modal.getOrCreateInstance(
+          document.getElementById("editProfileModal"),
+        );
+        modal.hide();
+
+        if (data.user) {
+          updateProfileDisplay(data.user);
+        }
+
+        Swal.fire({
+          icon: "success",
+          text: data.message || "Profile updated successfully",
+          showConfirmButton: false,
+          timer: 1500,
+          timerProgressBar: true,
+        });
+
+        loadProfile();
+      },
+      error: function (error) {
+        Swal.fire({
+          icon: "error",
+          text: error.responseJSON && error.responseJSON.error ? error.responseJSON.error : "Unable to update profile.",
+        });
+      },
+      complete: function () {
+        $("#saveProfileBtn").prop("disabled", false).text("Save Changes");
+      },
+    });
+  });
+
   $(document).on("click", ".viewOrderBtn", function () {
     const orderId = $(this).data("id");
     const order = allOrders.find((item) => String(item.id) === String(orderId));
@@ -158,9 +231,11 @@ $(document).ready(function () {
     let itemsHtml = "";
     let itemsTotal = 0;
 
-    if (order.OrderLines && order.OrderLines.length > 0) {
-      order.OrderLines.forEach((item) => {
-        const subtotal = parsePrice(item.price) * item.quantity;
+    const orderLines = getOrderLines(order);
+
+    if (orderLines.length > 0) {
+      orderLines.forEach((item) => {
+        const subtotal = parsePrice(item.price) * parsePrice(item.quantity);
         itemsTotal += subtotal;
         itemsHtml += `
           <tr>

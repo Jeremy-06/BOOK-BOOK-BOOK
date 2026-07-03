@@ -1,5 +1,6 @@
 $(document).ready(function () {
-  const url = "http://localhost:3000";
+  //const url = "http://localhost:3000";
+  const url = `http://${window.location.hostname}:3000`;
 
   const rawToken = sessionStorage.getItem("token");
   const token = rawToken ? rawToken.replace(/"/g, "") : null;
@@ -20,7 +21,12 @@ $(document).ready(function () {
     },
     columns: [
       { data: "id" },
-      { data: "name" },
+      {
+        data: null,
+        render: function (data) {
+          return `${data.first_name || ""} ${data.last_name || ""}`.trim() || "Unknown User";
+        },
+      },
       { data: "email" },
       {
         data: "role",
