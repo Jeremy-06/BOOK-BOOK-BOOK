@@ -146,7 +146,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
       <div class="container py-2">
         <a class="navbar-brand fw-bold" href="home.html">
-          <i class="fas fa-book-open me-2"></i>Book Shop
+          <i class="fas fa-book-open me-2"></i>Book Book Book
         </a>
         <button
           class="navbar-toggler"
@@ -193,12 +193,9 @@
           <div class="hero-shell row g-0 align-items-stretch">
             <div class="col-lg-7 hero-copy">
               <div class="eyebrow">Browse the catalog</div>
-              <h1 class="hero-title">
-                Find your next read without logging in.
-              </h1>
+              <h1 class="hero-title">Find your next read.</h1>
               <p class="hero-text mb-4">
-                Explore available books, check stock, and preview covers in a
-                clean catalog built for quick browsing.
+                Explore available books for you here at Book Book Book.
               </p>
               <div class="d-flex flex-wrap gap-3">
                 <a href="#catalog" class="btn btn-dark btn-lg px-4">
@@ -231,9 +228,7 @@
                   <div class="col-12">
                     <div class="stat-card">
                       <div class="section-label">Preview</div>
-                      <div class="fw-bold fs-4">
-                        Cover thumbnails from your book images
-                      </div>
+                      <div class="fw-bold fs-4">Book</div>
                     </div>
                   </div>
                 </div>
@@ -407,12 +402,64 @@
             <span class="fs-4 fw-bold" id="cartTotal">₱0.00</span>
           </div>
           <div class="d-grid gap-2">
+            <button type="button" class="btn btn-dark btn-lg" id="checkoutBtn">
+              <i class="fas fa-check-circle me-2"></i>Checkout
+            </button>
+            
             <button
               type="button"
               class="btn btn-outline-danger"
               id="clearCartBtn"
             >
               Clear Cart
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4">
+          <div class="modal-header bg-dark text-white border-0">
+            <div>
+              <p class="mb-0 text-uppercase small opacity-75">Payment</p>
+              <h5 class="modal-title mb-0">Complete Your Order</h5>
+            </div>
+            <button
+              type="button"
+              class="btn-close btn-close-white"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="stat-card mb-4">
+              <div class="section-label">Total Amount</div>
+              <div class="fw-bold fs-3" id="paymentTotalAmount">₱0.00</div>
+            </div>
+
+            <div class="mb-3">
+              <label for="paymentMethod" class="form-label fw-semibold">
+                Payment Method
+              </label>
+              <select class="form-select form-select-lg" id="paymentMethod">
+                <option value="Cash on Delivery">Cash on Delivery</option>
+                <option value="GCash">GCash</option>
+                <option value="Credit/Debit Card">Credit/Debit Card</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer border-0 px-4 pb-4">
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              data-bs-dismiss="modal"
+            >
+              Cancel
+            </button>
+            <button type="button" class="btn btn-dark" id="confirmPaymentBtn">
+              <i class="fas fa-credit-card me-2"></i>Confirm Payment & Place Order
             </button>
           </div>
         </div>

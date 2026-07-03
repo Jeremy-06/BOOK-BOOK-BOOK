@@ -78,6 +78,8 @@ $(document).ready(function () {
         }).then(() => {
           sessionStorage.setItem("token", JSON.stringify(data.token));
           sessionStorage.setItem("userId", JSON.stringify(data.user.id));
+          sessionStorage.setItem("userName", data.user.name || "");
+          sessionStorage.setItem("userEmail", data.user.email || "");
           sessionStorage.setItem("role", data.user.role);
           window.location.href = "home.html";
         });

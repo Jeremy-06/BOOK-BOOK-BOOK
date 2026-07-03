@@ -16,4 +16,7 @@ app.use('/api/v1/books', books);
 const users = require('./routes/user');
 app.use('/api/v1/users', users);
 
+const orders = require('./routes/order');
+app.use('/api/v1/orders', orders);
+
 module.exports = app;

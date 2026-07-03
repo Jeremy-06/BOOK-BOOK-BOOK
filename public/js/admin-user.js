@@ -1,8 +1,10 @@
 $(document).ready(function () {
   const url = "http://localhost:3000";
 
-  const token = sessionStorage.getItem("token");
-  const userRole = sessionStorage.getItem("role");
+  const rawToken = sessionStorage.getItem("token");
+  const token = rawToken ? rawToken.replace(/"/g, "") : null;
+  const rawRole = sessionStorage.getItem("role");
+  const userRole = rawRole ? rawRole.replace(/"/g, "") : null;
 
   if (!token || userRole !== "admin") {
     Swal.fire({ icon: "error", text: "Access Denied. Admins only." }).then(
