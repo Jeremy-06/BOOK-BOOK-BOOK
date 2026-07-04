@@ -28,7 +28,9 @@ $(document).ready(function () {
 
   // Escape value
   function escapeHtml(value) {
-    return $("<div>").text(value || "").html();
+    return $("<div>")
+      .text(value || "")
+      .html();
   }
 
   // Full name

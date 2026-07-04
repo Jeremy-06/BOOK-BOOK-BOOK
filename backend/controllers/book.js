@@ -235,7 +235,9 @@ exports.autocompleteBooks = async (req, res) => {
     return res.status(200).json(books);
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ error: "Error fetching autocomplete results" });
+    return res
+      .status(500)
+      .json({ error: "Error fetching autocomplete results" });
   }
 };
 
@@ -272,27 +274,36 @@ exports.createBook = async (req, res, next) => {
       req.files || [],
       req.body.main_cover_filename,
     );
-    const orderedImagePaths = sortImagesWithMainFirst(imagePaths, mainImagePath);
+    const orderedImagePaths = sortImagesWithMainFirst(
+      imagePaths,
+      mainImagePath,
+    );
 
     if (!title || !author || !price || !isbn) {
       await transaction.rollback();
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    const book = await Book.create({
-      title,
-      author,
-      description,
-      price,
-      isbn,
-      img_path: JSON.stringify(orderedImagePaths),
-      created_at: Date.now(),
-    }, { transaction });
+    const book = await Book.create(
+      {
+        title,
+        author,
+        description,
+        price,
+        isbn,
+        img_path: JSON.stringify(orderedImagePaths),
+        created_at: Date.now(),
+      },
+      { transaction },
+    );
 
-    const stock = await Stock.create({
-      book_id: book.book_id,
-      quantity: quantity || 0,
-    }, { transaction });
+    const stock = await Stock.create(
+      {
+        book_id: book.book_id,
+        quantity: quantity || 0,
+      },
+      { transaction },
+    );
 
     await syncBookImages(
       book.book_id,
@@ -425,10 +436,7 @@ exports.updateBook = async (req, res, next) => {
       });
 
       if (mainCoverFile) {
-        await mainCoverFile.image.update(
-          { is_main: true },
-          { transaction },
-        );
+        await mainCoverFile.image.update({ is_main: true }, { transaction });
         mainCoverWasSet = true;
       }
     }
@@ -472,14 +480,14 @@ exports.updateBook = async (req, res, next) => {
 
         mainCoverWasSet = affectedRows > 0;
       } else if (req.body.main_cover.startsWith("new:")) {
-        const newImageIndex = parseInt(req.body.main_cover.replace("new:", ""), 10);
+        const newImageIndex = parseInt(
+          req.body.main_cover.replace("new:", ""),
+          10,
+        );
         const newMainImage = createdImages[newImageIndex];
 
         if (newMainImage) {
-          await newMainImage.image.update(
-            { is_main: true },
-            { transaction },
-          );
+          await newMainImage.image.update({ is_main: true }, { transaction });
           mainCoverWasSet = true;
         }
       }

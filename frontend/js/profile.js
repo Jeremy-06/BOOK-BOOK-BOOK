@@ -89,7 +89,11 @@ $(document).ready(function () {
     const zipCode = customer.zip_code || "";
     const address = customer.address || "";
 
-    $("#profileName").text(getFullName(user) || `${sessionFirstName} ${sessionLastName}`.trim() || "-");
+    $("#profileName").text(
+      getFullName(user) ||
+        `${sessionFirstName} ${sessionLastName}`.trim() ||
+        "-",
+    );
     $("#profileEmail").text(user.email || sessionEmail);
     $("#profileFirstName").text(displayValue(firstName));
     $("#profileLastName").text(displayValue(lastName));
@@ -102,7 +106,6 @@ $(document).ready(function () {
     $("#editPhone").val(phone);
     $("#editZipCode").val(zipCode);
     $("#editAddress").val(address);
-
   }
 
   // Get lines
@@ -188,7 +191,9 @@ $(document).ready(function () {
         updateProfileDisplay(getProfileUser(data));
       },
       error: function () {
-        $("#profileName").text(`${sessionFirstName} ${sessionLastName}`.trim() || "-");
+        $("#profileName").text(
+          `${sessionFirstName} ${sessionLastName}`.trim() || "-",
+        );
         $("#profileEmail").text(sessionEmail);
         Swal.fire({
           icon: "warning",
@@ -219,7 +224,10 @@ $(document).ready(function () {
         `);
         Swal.fire({
           icon: "error",
-          text: error.responseJSON && error.responseJSON.message ? error.responseJSON.message : "Unable to load your orders.",
+          text:
+            error.responseJSON && error.responseJSON.message
+              ? error.responseJSON.message
+              : "Unable to load your orders.",
         });
       },
     });
@@ -276,7 +284,10 @@ $(document).ready(function () {
       error: function (error) {
         Swal.fire({
           icon: "error",
-          text: error.responseJSON && error.responseJSON.error ? error.responseJSON.error : "Unable to update profile.",
+          text:
+            error.responseJSON && error.responseJSON.error
+              ? error.responseJSON.error
+              : "Unable to update profile.",
         });
       },
       complete: function () {
@@ -320,7 +331,8 @@ $(document).ready(function () {
         `;
       });
     } else {
-      itemsHtml = '<tr><td colspan="4" class="text-center text-muted">No items found</td></tr>';
+      itemsHtml =
+        '<tr><td colspan="4" class="text-center text-muted">No items found</td></tr>';
     }
 
     const shippingFee = parsePrice(order.shipping_fee || 100);

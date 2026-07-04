@@ -27,7 +27,9 @@ $(document).ready(function () {
 
   // Escape value
   function escapeHtml(value) {
-    return $("<div>").text(value || "").html();
+    return $("<div>")
+      .text(value || "")
+      .html();
   }
 
   // Validate field
@@ -127,7 +129,9 @@ $(document).ready(function () {
       );
     const isNewMain =
       mainCover.startsWith("new:") &&
-      selectedImages.some((image) => image.id === mainCover.replace("new:", ""));
+      selectedImages.some(
+        (image) => image.id === mainCover.replace("new:", ""),
+      );
 
     selectedMainCover =
       isExistingMain || isLegacyExistingMain || isNewMain ? mainCover : null;

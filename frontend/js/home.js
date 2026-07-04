@@ -265,7 +265,10 @@ $(document).ready(function () {
       success: function (books) {
         const currentSearchValue = $("#searchBox").val().trim();
 
-        if (currentSearchValue.length < 2 || currentSearchValue !== searchValue) {
+        if (
+          currentSearchValue.length < 2 ||
+          currentSearchValue !== searchValue
+        ) {
           hideAutocompleteResults();
           return;
         }
@@ -577,7 +580,7 @@ $(document).ready(function () {
     e.preventDefault();
 
     const cart = getCart();
-    const selectedItems = cart.filter(item => item.isSelected !== false);
+    const selectedItems = cart.filter((item) => item.isSelected !== false);
 
     if (selectedItems.length === 0) {
       Swal.fire({
@@ -654,10 +657,15 @@ $(document).ready(function () {
       price: parsePrice(item.price),
     }));
 
-    const payload = JSON.stringify({ cart: formattedCart, payment_method: paymentMethod });
+    const payload = JSON.stringify({
+      cart: formattedCart,
+      payment_method: paymentMethod,
+    });
     const btn = $(this);
 
-    btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin me-2"></i>Processing...');
+    btn
+      .prop("disabled", true)
+      .html('<i class="fas fa-spinner fa-spin me-2"></i>Processing...');
 
     $.ajax({
       type: "POST",
@@ -680,11 +688,17 @@ $(document).ready(function () {
           text: "Your order has been successfully placed via COD.",
           timer: 2000,
         }).then(() => {
-          const remainingItems = cart.filter(item => item.isSelected === false);
+          const remainingItems = cart.filter(
+            (item) => item.isSelected === false,
+          );
           localStorage.setItem(cartKey, JSON.stringify(remainingItems));
-          
+
           updateCartUI();
-          btn.prop("disabled", false).html('<i class="fas fa-credit-card me-2"></i>Confirm Payment & Place Order');
+          btn
+            .prop("disabled", false)
+            .html(
+              '<i class="fas fa-credit-card me-2"></i>Confirm Payment & Place Order',
+            );
 
           const cartCanvasEl = document.getElementById("cartCanvas");
           if (cartCanvasEl) {
@@ -699,12 +713,16 @@ $(document).ready(function () {
             success: function (bookData) {
               allBooks = bookData.rows || [];
               renderBooks(allBooks);
-            }
+            },
           });
         });
       },
       error: function (error) {
-        btn.prop("disabled", false).html('<i class="fas fa-credit-card me-2"></i>Confirm Payment & Place Order');
+        btn
+          .prop("disabled", false)
+          .html(
+            '<i class="fas fa-credit-card me-2"></i>Confirm Payment & Place Order',
+          );
 
         const responseError = error.responseJSON && error.responseJSON.error;
         const isIncompleteProfile =
@@ -729,7 +747,7 @@ $(document).ready(function () {
       },
     });
   });
-  
+
   // Toggle selection
   $(document).on("change", ".select-cart-item", function () {
     const id = $(this).data("id");

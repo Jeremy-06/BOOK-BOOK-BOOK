@@ -43,7 +43,9 @@ const registerUser = async (req, res) => {
     if (!first_name || !last_name || !password || !email) {
       return res
         .status(400)
-        .json({ error: "First name, last name, email, and password are required" });
+        .json({
+          error: "First name, last name, email, and password are required",
+        });
     }
 
     // Hash password
@@ -110,9 +112,7 @@ const loginUser = async (req, res) => {
       process.env.JWT_SECRET || "secret_key",
     );
 
-    await user.update(
-      { token: token }
-    );
+    await user.update({ token: token });
 
     return res.status(200).json({
       success: true,
@@ -330,12 +330,10 @@ const getUserProfile = async (req, res) => {
       where: { user_id: id },
     });
 
-    return res
-      .status(200)
-      .json({
-        success: true,
-        result: { ...user.toJSON(), Customer: customer },
-      });
+    return res.status(200).json({
+      success: true,
+      result: { ...user.toJSON(), Customer: customer },
+    });
   } catch (error) {
     console.log(error);
     return res
