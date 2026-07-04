@@ -181,6 +181,89 @@ $(document).ready(function () {
     return getImageSrc(getMainCoverPath(book), fallbackSrc);
   }
 
+  function debounce(callback, delay = 300) {
+    let timeoutId;
+
+    return function (...args) {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => callback.apply(this, args), delay);
+    };
+  }
+
+  function hideAutocompleteResults() {
+    $("#autocomplete-results").hide().empty();
+  }
+
+  function renderAutocompleteResults(books) {
+    const resultsContainer = $("#autocomplete-results");
+    resultsContainer.empty();
+
+    if (!Array.isArray(books) || books.length === 0) {
+      hideAutocompleteResults();
+      return;
+    }
+
+    books.forEach((book) => {
+      const title = book.title || "Untitled";
+      const imageSrc = getMainCoverSrc(
+        book,
+        "https://via.placeholder.com/120x160?text=No+Image",
+      );
+      const item = $("<button>", {
+        type: "button",
+        class:
+          "list-group-item list-group-item-action d-flex align-items-center gap-2 autocomplete-item",
+      }).data("title", title);
+
+      item.append(
+        $("<img>", {
+          src: imageSrc,
+          alt: title,
+          class: "rounded",
+        }).css({
+          width: "42px",
+          height: "56px",
+          objectFit: "cover",
+          flex: "0 0 auto",
+        }),
+      );
+
+      item.append(
+        $("<span>", {
+          class: "text-truncate fw-semibold",
+          text: title,
+        }),
+      );
+
+      resultsContainer.append(item);
+    });
+
+    resultsContainer.show();
+  }
+
+  const fetchAutocompleteResults = debounce(function (searchValue) {
+    $.ajax({
+      method: "GET",
+      url: `${url}/api/v1/books/autocomplete`,
+      data: { q: searchValue },
+      dataType: "json",
+      success: function (books) {
+        const currentSearchValue = $("#searchBox").val().trim();
+
+        if (currentSearchValue.length < 2 || currentSearchValue !== searchValue) {
+          hideAutocompleteResults();
+          return;
+        }
+
+        renderAutocompleteResults(books);
+      },
+      error: function (error) {
+        console.log("Error loading autocomplete results:", error);
+        hideAutocompleteResults();
+      },
+    });
+  }, 300);
+
   function addToCart(bookId) {
     const book = allBooks.find(
       (item) => String(item.book_id) === String(bookId),
@@ -364,7 +447,29 @@ $(document).ready(function () {
   });
 
   $("#searchBox").on("input", function () {
+    const searchValue = $(this).val().trim();
     renderBooks(allBooks);
+
+    if (searchValue.length < 2) {
+      hideAutocompleteResults();
+      return;
+    }
+
+    fetchAutocompleteResults(searchValue);
+  });
+
+  $(document).on("click", ".autocomplete-item", function () {
+    const title = $(this).data("title");
+
+    $("#searchBox").val(title);
+    hideAutocompleteResults();
+    renderBooks(allBooks);
+  });
+
+  $(document).on("click", function (event) {
+    if (!$(event.target).closest("#searchBox, #autocomplete-results").length) {
+      hideAutocompleteResults();
+    }
   });
 
   $(document).on("click", ".viewBtn", function () {

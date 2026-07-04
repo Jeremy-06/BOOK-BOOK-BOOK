@@ -1,8 +1,8 @@
 const db = require("../models");
+const { Op } = require("sequelize");
 const Book = db.Book;
 const Stock = db.Stock;
 const BookImage = db.BookImage;
-const Op = db.Sequelize.Op;
 
 function parsePositiveInt(value, fallback) {
   const parsed = parseInt(value, 10);
@@ -180,6 +180,38 @@ exports.getAllBooks = async (req, res) => {
   } catch (error) {
     console.log(error);
     return res.status(500).json({ error: "Error fetching books" });
+  }
+};
+
+exports.autocompleteBooks = async (req, res) => {
+  try {
+    const searchValue = String(req.query.q || "").trim();
+
+    if (!searchValue) {
+      return res.status(200).json([]);
+    }
+
+    const books = await Book.findAll({
+      where: {
+        title: {
+          [Op.substring]: searchValue,
+        },
+      },
+      include: [
+        {
+          model: BookImage,
+          where: { is_main: true },
+          required: false,
+        },
+      ],
+      limit: 5,
+      order: [["title", "ASC"]],
+    });
+
+    return res.status(200).json(books);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: "Error fetching autocomplete results" });
   }
 };
 

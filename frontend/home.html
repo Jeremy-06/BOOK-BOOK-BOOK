@@ -250,13 +250,14 @@
                 <div class="section-label mb-1">Browse products</div>
                 <h2 class="h4 mb-0">Available Books</h2>
               </div>
-              <div class="col-lg-4">
+              <div class="col-lg-4 position-relative">
                 <input
                   type="text"
                   id="searchBox"
                   class="form-control form-control-lg"
                   placeholder="Search books or authors"
                 />
+                <div id="autocomplete-results" class="list-group position-absolute w-100 shadow-sm" style="display: none; z-index: 1050; max-height: 300px; overflow-y: auto; top: 100%;"></div>
               </div>
             </div>
           </div>
