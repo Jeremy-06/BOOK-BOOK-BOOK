@@ -4,15 +4,18 @@ const Book = db.Book;
 const Stock = db.Stock;
 const BookImage = db.BookImage;
 
+// Parse number
 function parsePositiveInt(value, fallback) {
   const parsed = parseInt(value, 10);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+// Sort order
 function getSortOrder(value) {
   return String(value || "DESC").toUpperCase() === "ASC" ? "ASC" : "DESC";
 }
 
+// Sort books
 function getBookSortColumn(value) {
   const sortColumns = {
     id: "book_id",
@@ -28,6 +31,7 @@ function getBookSortColumn(value) {
   return sortColumns[value] || sortColumns.id;
 }
 
+// Parse images
 function parseStoredImages(value) {
   if (!value) return [];
 
@@ -39,6 +43,7 @@ function parseStoredImages(value) {
   }
 }
 
+// Parse images
 function parseJsonArray(value) {
   if (!value) return [];
 
@@ -54,10 +59,12 @@ function parseJsonArray(value) {
   }
 }
 
+// Normalize paths
 function normalizeFilePaths(files) {
   return files ? files.map((file) => file.path.replace(/\\/g, "/")) : [];
 }
 
+// Normalize cover
 function normalizeMainImage(
   imagePaths,
   selectedMainCover,
@@ -101,6 +108,7 @@ function normalizeMainImage(
   return imagePaths[0];
 }
 
+// Sort images
 function sortImagesWithMainFirst(imagePaths, mainImagePath) {
   if (!mainImagePath) return imagePaths;
   return [
@@ -109,6 +117,7 @@ function sortImagesWithMainFirst(imagePaths, mainImagePath) {
   ];
 }
 
+// Sync images
 async function syncBookImages(bookId, imagePaths, mainImagePath, transaction) {
   await BookImage.destroy({ where: { book_id: bookId }, transaction });
 
@@ -124,6 +133,7 @@ async function syncBookImages(bookId, imagePaths, mainImagePath, transaction) {
   );
 }
 
+// Ensure images
 async function ensureLegacyBookImages(book, existingImagePaths, transaction) {
   const existingImageCount = await BookImage.count({
     where: { book_id: book.book_id },
@@ -144,6 +154,7 @@ async function ensureLegacyBookImages(book, existingImagePaths, transaction) {
   );
 }
 
+// Fetch books
 exports.getAllBooks = async (req, res) => {
   try {
     const page = parsePositiveInt(req.query.page, 1);
@@ -175,6 +186,7 @@ exports.getAllBooks = async (req, res) => {
     }
 
     if (limit > 0) {
+      // Offset limit
       queryOptions.limit = limit;
       queryOptions.offset = (page - 1) * limit;
     }
@@ -194,6 +206,7 @@ exports.getAllBooks = async (req, res) => {
   }
 };
 
+// Search books
 exports.autocompleteBooks = async (req, res) => {
   try {
     const searchValue = String(req.query.q || "").trim();
@@ -226,6 +239,7 @@ exports.autocompleteBooks = async (req, res) => {
   }
 };
 
+// Fetch book
 exports.getSingleBook = async (req, res) => {
   try {
     const book = await Book.findByPk(req.params.id, {
@@ -245,6 +259,7 @@ exports.getSingleBook = async (req, res) => {
   }
 };
 
+// Create book
 exports.createBook = async (req, res, next) => {
   const transaction = await db.sequelize.transaction();
 
@@ -304,6 +319,7 @@ exports.createBook = async (req, res, next) => {
   }
 };
 
+// Update book
 exports.updateBook = async (req, res, next) => {
   const transaction = await db.sequelize.transaction();
 
@@ -512,6 +528,7 @@ exports.updateBook = async (req, res, next) => {
   }
 };
 
+// Delete book
 exports.deleteBook = async (req, res) => {
   try {
     const { id } = req.params;

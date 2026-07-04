@@ -25,10 +25,12 @@ $(document).ready(function () {
     return;
   }
 
+  // Escape value
   function escapeHtml(value) {
     return $("<div>").text(value || "").html();
   }
 
+  // Validate field
   function validateRequiredField($field) {
     if (!$field.val().trim()) {
       $field.addClass("is-invalid").removeClass("is-valid");
@@ -39,6 +41,7 @@ $(document).ready(function () {
     return true;
   }
 
+  // Validate form
   function validateRequiredFields($form) {
     let isValid = true;
 
@@ -51,10 +54,12 @@ $(document).ready(function () {
     return isValid;
   }
 
+  // Clear state
   function clearValidationState($form) {
     $form.find(".required-field").removeClass("is-invalid is-valid");
   }
 
+  // Parse images
   function parseImages(imageValue) {
     if (!imageValue) return [];
 
@@ -66,10 +71,12 @@ $(document).ready(function () {
     }
   }
 
+  // Get images
   function getBookImages(book) {
     return getBookImageRecords(book).map((image) => image.path);
   }
 
+  // Get records
   function getBookImageRecords(book) {
     if (Array.isArray(book.BookImages) && book.BookImages.length > 0) {
       return [...book.BookImages]
@@ -88,6 +95,7 @@ $(document).ready(function () {
     }));
   }
 
+  // Main cover
   function getMainCoverValue() {
     if (selectedMainCover) return selectedMainCover;
 
@@ -104,6 +112,7 @@ $(document).ready(function () {
     return "";
   }
 
+  // Ensure cover
   function ensureMainCover() {
     const mainCover = getMainCoverValue();
     const isExistingMain =
@@ -124,6 +133,7 @@ $(document).ready(function () {
       isExistingMain || isLegacyExistingMain || isNewMain ? mainCover : null;
   }
 
+  // Preview images
   function renderImagePreviews() {
     ensureMainCover();
 
@@ -163,6 +173,7 @@ $(document).ready(function () {
     $("#image-preview-container").html(previewHtml);
   }
 
+  // Reset queue
   function resetImageQueue() {
     selectedImages = [];
     existingImages = [];
@@ -172,6 +183,7 @@ $(document).ready(function () {
     $("#image-preview-container").empty();
   }
 
+  // Build form data
   function buildBookFormData() {
     const formData = new FormData();
 
@@ -213,6 +225,7 @@ $(document).ready(function () {
     return formData;
   }
 
+  // Cover image
   function getCoverImage(book) {
     const images = getBookImages(book);
     return images.length > 0
@@ -220,6 +233,7 @@ $(document).ready(function () {
       : '<span class="badge bg-secondary">No Image</span>';
   }
 
+  // Render row
   function renderBookRow(book) {
     const qty = book.Stock ? book.Stock.quantity : 0;
     const stockHtml =
@@ -244,6 +258,7 @@ $(document).ready(function () {
     `;
   }
 
+  // Fetch books
   function fetchBooks() {
     if (isFetching || !hasMoreBooks) return;
 
@@ -276,6 +291,7 @@ $(document).ready(function () {
     });
   }
 
+  // Refresh books
   function refreshBooks() {
     currentPage = 1;
     hasMoreBooks = true;
@@ -285,6 +301,7 @@ $(document).ready(function () {
   }
 
   $(".custom-table-scroll").on("scroll", function () {
+    // Check scroll bottom
     if (
       Math.ceil($(this).scrollTop() + $(this).innerHeight()) >=
       $(this)[0].scrollHeight - 5
@@ -314,6 +331,7 @@ $(document).ready(function () {
     clearTimeout(searchDebounceTimer);
     searchQuery = $(this).val().trim();
 
+    // Debounce search
     searchDebounceTimer = setTimeout(function () {
       refreshBooks();
     }, 300);

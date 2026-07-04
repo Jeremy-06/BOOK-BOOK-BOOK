@@ -8,6 +8,7 @@ db.Book = Book(sequelize, require('sequelize').DataTypes);
 db.Stock = Stock(sequelize, require('sequelize').DataTypes);
 db.BookImage = BookImage(sequelize, require('sequelize').DataTypes);
 
+// Define associations
 db.Book.hasOne(db.Stock, {
     foreignKey: 'book_id',
     onDelete: 'CASCADE'
@@ -42,7 +43,6 @@ const OrderLine = require('./orderline');
 db.Order = Order(sequelize, require('sequelize').DataTypes);
 db.OrderLine = OrderLine(sequelize, require('sequelize').DataTypes);
 
-// Associations para sa Orders
 db.User.hasMany(db.Order, { foreignKey: 'user_id' });
 db.Order.belongsTo(db.User, { foreignKey: 'user_id' });
 

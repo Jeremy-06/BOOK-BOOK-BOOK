@@ -6,14 +6,17 @@ const Stock = db.Stock;
 const Customer = db.Customer;
 const sequelize = db.sequelize;
 
+// Parse number
 const parsePositiveInt = (value, fallback) => {
     const parsed = parseInt(value, 10);
     return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 };
 
+// Sort order
 const getSortOrder = (value) =>
     String(value || 'DESC').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
+// Sort orders
 const getOrderSortColumn = (value) => {
     const sortColumns = {
         id: 'id',
@@ -27,6 +30,7 @@ const getOrderSortColumn = (value) => {
     return sortColumns[value] || sortColumns.id;
 };
 
+// Create order
 const createOrder = async (req, res) => {
     console.log('createOrder controller entered');
     let t;
@@ -59,22 +63,19 @@ const createOrder = async (req, res) => {
         }
 
         console.log('createOrder before transaction');
-
-        // Umpisa ng Database Transaction
         t = await sequelize.transaction();
 
-        // 1. Gumawa ng Order Record
         const order = await Order.create({
             user_id: userId,
             shipping_fee: 100,
             payment_method: payment_method || 'Cash on Delivery'
         }, { transaction: t });
 
-        // 2. I-loop ang Cart, I-save ang bawat OrderLine, at Bawasan ang Stock
         for (let i = 0; i < cart.length; i++) {
             const item = cart[i];
 
-            // I-save ang item sa orderline
+            // Reserve stock
+
             await OrderLine.create({
                 order_id: order.id,
                 book_id: item.item_id,
@@ -82,7 +83,6 @@ const createOrder = async (req, res) => {
                 price: item.price
             }, { transaction: t });
 
-            // Hanapin ang stock ng libro at bawasan
             const stock = await Stock.findOne({ 
                 where: { book_id: item.item_id }, 
                 transaction: t 
@@ -95,7 +95,6 @@ const createOrder = async (req, res) => {
             await stock.decrement('quantity', { by: item.quantity, transaction: t });
         }
 
-        // 3. I-commit ang Transaction kung walang error
         await t.commit();
         console.log('createOrder after transaction commit');
 
@@ -108,7 +107,6 @@ const createOrder = async (req, res) => {
 
     } catch (error) {
         console.log('createOrder catch block', error);
-        // 4. I-rollback kung nagka-error (ibabalik lahat sa dati)
         if (t) {
             await t.rollback();
         }
@@ -116,6 +114,7 @@ const createOrder = async (req, res) => {
     }
 };
 
+// List orders
 const getAllOrders = async (req, res) => {
     try {
         const page = parsePositiveInt(req.query.page, 1);
@@ -169,6 +168,7 @@ const getAllOrders = async (req, res) => {
     }
 };
 
+// My orders
 const myOrders = async (req, res) => {
     try {
         const orders = await Order.findAll({
@@ -188,6 +188,7 @@ const myOrders = async (req, res) => {
     }
 };
 
+// Update status
 const updateOrderStatus = async (req, res) => {
     try {
         const { id } = req.params;
@@ -200,6 +201,7 @@ const updateOrderStatus = async (req, res) => {
     }
 };
 
+// Cancel order
 const cancelOrder = async (req, res) => {
     let t;
 
@@ -243,6 +245,7 @@ const cancelOrder = async (req, res) => {
 
         const orderLines = order.OrderLines || [];
 
+        // Restore stock
         for (const item of orderLines) {
             const [stock] = await Stock.findOrCreate({
                 where: { book_id: item.book_id },

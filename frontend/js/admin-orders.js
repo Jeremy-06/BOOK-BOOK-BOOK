@@ -22,10 +22,12 @@ $(document).ready(function () {
     return;
   }
 
+  // Escape value
   function escapeHtml(value) {
     return $("<div>").text(value || "").html();
   }
 
+  // Full name
   function getFullName(user) {
     return user
       ? `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
@@ -33,6 +35,7 @@ $(document).ready(function () {
       : "Unknown User";
   }
 
+  // Total items
   function getOrderItemsTotal(order) {
     return order.OrderLines
       ? order.OrderLines.reduce(
@@ -42,12 +45,14 @@ $(document).ready(function () {
       : 0;
   }
 
+  // Item count
   function getOrderItemsCount(order) {
     return order.OrderLines
       ? order.OrderLines.reduce((sum, item) => sum + item.quantity, 0)
       : 0;
   }
 
+  // Status badge
   function renderStatusBadge(status) {
     let badgeClass = "bg-secondary";
     if (status === "Processing") badgeClass = "bg-primary";
@@ -57,6 +62,7 @@ $(document).ready(function () {
     return `<span class="badge ${badgeClass}">${escapeHtml(status)}</span>`;
   }
 
+  // Render row
   function renderOrderRow(order) {
     const shipping = parseFloat(order.shipping_fee) || 100;
     const total = shipping + getOrderItemsTotal(order);
@@ -83,6 +89,7 @@ $(document).ready(function () {
     `;
   }
 
+  // Fetch orders
   function fetchOrders() {
     if (isFetching || !hasMoreOrders) return;
 
@@ -117,6 +124,7 @@ $(document).ready(function () {
     });
   }
 
+  // Refresh orders
   function refreshOrders() {
     currentPage = 1;
     hasMoreOrders = true;
@@ -127,6 +135,7 @@ $(document).ready(function () {
   }
 
   $(".custom-table-scroll").on("scroll", function () {
+    // Check scroll bottom
     if (
       Math.ceil($(this).scrollTop() + $(this).innerHeight()) >=
       $(this)[0].scrollHeight - 5
@@ -157,6 +166,7 @@ $(document).ready(function () {
     clearTimeout(searchDebounceTimer);
     searchQuery = $(this).val().trim();
 
+    // Debounce search
     searchDebounceTimer = setTimeout(function () {
       refreshOrders();
     }, 300);

@@ -1,8 +1,7 @@
-// User script
 $(document).ready(function () {
-  //const url = "http://localhost:3000";
   const url = `http://${window.location.hostname}:3000`;
 
+  // Validate field
   function validateRequiredField($field) {
     if (!$field.val().trim()) {
       $field.addClass("is-invalid").removeClass("is-valid");
@@ -13,6 +12,7 @@ $(document).ready(function () {
     return true;
   }
 
+  // Validate form
   function validateRequiredFields($form) {
     let isValid = true;
 

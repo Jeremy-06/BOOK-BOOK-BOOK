@@ -5,17 +5,21 @@ const { Op } = require("sequelize");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
+// Build name
 const getFullName = (user) =>
   `${user.first_name || ""} ${user.last_name || ""}`.trim();
 
+// Parse number
 const parsePositiveInt = (value, fallback) => {
   const parsed = parseInt(value, 10);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 };
 
+// Sort order
 const getSortOrder = (value) =>
   String(value || "DESC").toUpperCase() === "ASC" ? "ASC" : "DESC";
 
+// Sort users
 const getUserSortColumn = (value) => {
   const sortColumns = {
     id: "id",
@@ -31,6 +35,7 @@ const getUserSortColumn = (value) => {
   return sortColumns[value] || sortColumns.id;
 };
 
+// Register user
 const registerUser = async (req, res) => {
   try {
     const { first_name, last_name, password, email } = req.body;
@@ -41,6 +46,7 @@ const registerUser = async (req, res) => {
         .json({ error: "First name, last name, email, and password are required" });
     }
 
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await User.create({
@@ -72,6 +78,7 @@ const registerUser = async (req, res) => {
   }
 };
 
+// Login user
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -97,6 +104,7 @@ const loginUser = async (req, res) => {
         .json({ success: false, message: "Invalid email or password" });
     }
 
+    // Sign token
     const token = jwt.sign(
       { id: user.id },
       process.env.JWT_SECRET || "secret_key",
@@ -127,6 +135,7 @@ const loginUser = async (req, res) => {
   }
 };
 
+// Update user
 const updateUser = async (req, res) => {
   try {
     const { fname, lname, addressline, zipcode, phone, userId } = req.body;
@@ -177,6 +186,7 @@ const updateUser = async (req, res) => {
   }
 };
 
+// Get profile
 const getProfile = async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id, {
@@ -200,6 +210,7 @@ const getProfile = async (req, res) => {
   }
 };
 
+// Update profile
 const updateProfile = async (req, res) => {
   try {
     const { first_name, last_name, phone, zip_code, address } = req.body;
@@ -251,6 +262,7 @@ const updateProfile = async (req, res) => {
   }
 };
 
+// Deactivate user
 const deactivateUser = async (req, res) => {
   try {
     const { email } = req.body;
@@ -276,6 +288,7 @@ const deactivateUser = async (req, res) => {
   }
 };
 
+// Reactivate user
 const reactivateUser = async (req, res) => {
   try {
     const { email } = req.body;
@@ -300,6 +313,7 @@ const reactivateUser = async (req, res) => {
   }
 };
 
+// Get user profile
 const getUserProfile = async (req, res) => {
   try {
     const { id } = req.params;
@@ -330,6 +344,7 @@ const getUserProfile = async (req, res) => {
   }
 };
 
+// List users
 const getAllUsers = async (req, res) => {
   try {
     const page = parsePositiveInt(req.query.page, 1);
@@ -371,6 +386,7 @@ const getAllUsers = async (req, res) => {
   }
 };
 
+// Update role
 const updateUserRole = async (req, res) => {
   try {
     const { id } = req.params;

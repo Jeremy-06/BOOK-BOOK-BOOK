@@ -1,5 +1,4 @@
 $(document).ready(function () {
-  //const url = "http://localhost:3000";
   const url = `http://${window.location.hostname}:3000`;
   const cartKey = "bookShopCart";
   const rawToken = sessionStorage.getItem("token");
@@ -41,6 +40,7 @@ $(document).ready(function () {
   let checkoutCart = [];
   let checkoutSelectedItems = [];
 
+  // Get cart
   function getCart() {
     try {
       const storedCart = localStorage.getItem(cartKey);
@@ -51,25 +51,30 @@ $(document).ready(function () {
     }
   }
 
+  // Save cart
   function saveCart(cart) {
     localStorage.setItem(cartKey, JSON.stringify(cart));
     updateCartUI();
   }
 
+  // Parse price
   function parsePrice(price) {
     const value = Number(price);
     return Number.isFinite(value) ? value : 0;
   }
 
+  // Current token
   function getCurrentToken() {
     const rawToken = sessionStorage.getItem("token");
     return rawToken ? rawToken.replace(/"/g, "") : null;
   }
 
+  // Cart count
   function getCartCount(cart) {
     return cart.reduce((total, item) => total + item.quantity, 0);
   }
 
+  // Cart total
   function getCartTotal(cart) {
     return cart.reduce((total, item) => {
       if (item.isSelected === false) return total;
@@ -77,11 +82,13 @@ $(document).ready(function () {
     }, 0);
   }
 
+  // Update badge
   function updateCartBadge() {
     const cart = getCart();
     $("#cartCount").text(getCartCount(cart));
   }
 
+  // Render cart
   function renderCart() {
     const cart = getCart();
     const cartItems = $("#cartItems");
@@ -100,7 +107,6 @@ $(document).ready(function () {
 
     const html = cart
       .map((item) => {
-        // Check kung naka-select ang item (true by default)
         const checkedAttr = item.isSelected !== false ? "checked" : "";
 
         return `
@@ -142,11 +148,13 @@ $(document).ready(function () {
     updateCartBadge();
   }
 
+  // Update cart
   function updateCartUI() {
     updateCartBadge();
     renderCart();
   }
 
+  // Parse images
   function parseImages(imageValue) {
     if (!imageValue) {
       return [];
@@ -160,6 +168,7 @@ $(document).ready(function () {
     }
   }
 
+  // Resolve image
   function getImageSrc(imagePath, fallbackSrc) {
     if (!imagePath) {
       return fallbackSrc;
@@ -168,6 +177,7 @@ $(document).ready(function () {
     return /^https?:\/\//i.test(imagePath) ? imagePath : `${url}/${imagePath}`;
   }
 
+  // Get cover
   function getMainCoverPath(book) {
     if (Array.isArray(book.BookImages) && book.BookImages.length > 0) {
       return book.BookImages[0].image_path || book.BookImages[0].url || "";
@@ -177,10 +187,12 @@ $(document).ready(function () {
     return images.length > 0 ? images[0] : "";
   }
 
+  // Get cover source
   function getMainCoverSrc(book, fallbackSrc) {
     return getImageSrc(getMainCoverPath(book), fallbackSrc);
   }
 
+  // Debounce input
   function debounce(callback, delay = 300) {
     let timeoutId;
 
@@ -190,10 +202,12 @@ $(document).ready(function () {
     };
   }
 
+  // Hide results
   function hideAutocompleteResults() {
     $("#autocomplete-results").hide().empty();
   }
 
+  // Render results
   function renderAutocompleteResults(books) {
     const resultsContainer = $("#autocomplete-results");
     resultsContainer.empty();
@@ -241,6 +255,7 @@ $(document).ready(function () {
     resultsContainer.show();
   }
 
+  // Fetch results
   const fetchAutocompleteResults = debounce(function (searchValue) {
     $.ajax({
       method: "GET",
@@ -264,6 +279,7 @@ $(document).ready(function () {
     });
   }, 300);
 
+  // Add to cart
   function addToCart(bookId) {
     const book = allBooks.find(
       (item) => String(item.book_id) === String(bookId),
@@ -321,6 +337,7 @@ $(document).ready(function () {
     });
   }
 
+  // Render books
   function renderBooks(books) {
     const query = $("#searchBox").val().trim().toLowerCase();
     const filteredBooks = books.filter((book) => {
@@ -373,6 +390,7 @@ $(document).ready(function () {
     $("#emptyState").toggleClass("d-none", filteredBooks.length > 0);
   }
 
+  // Parse images
   function parseBookImages(imageValue) {
     if (!imageValue) {
       return [];
@@ -386,6 +404,7 @@ $(document).ready(function () {
     }
   }
 
+  // Open modal
   function openProductModal(book) {
     const images = parseBookImages(book.img_path);
     const stockQty = book.Stock ? book.Stock.quantity : 0;
@@ -555,15 +574,10 @@ $(document).ready(function () {
   });
 
   $(document).on("click", "#checkoutBtn", function (e) {
-    e.preventDefault(); // Pinipigilan ang page na mag-refresh
-    console.log("1. Checkout button was clicked!"); // DEBUGGER
+    e.preventDefault();
 
     const cart = getCart();
-    console.log("2. Current Cart:", cart); // DEBUGGER
-
-    // Kunin lang ang mga naka-check
     const selectedItems = cart.filter(item => item.isSelected !== false);
-    console.log("3. Selected Items for checkout:", selectedItems); // DEBUGGER
 
     if (selectedItems.length === 0) {
       Swal.fire({
@@ -633,7 +647,7 @@ $(document).ready(function () {
       return;
     }
 
-    // I-format para sa backend
+    // Build payload
     const formattedCart = selectedItems.map((item) => ({
       item_id: item.id,
       quantity: item.quantity,
@@ -642,8 +656,6 @@ $(document).ready(function () {
 
     const payload = JSON.stringify({ cart: formattedCart, payment_method: paymentMethod });
     const btn = $(this);
-
-    console.log("4. Sending payload to backend:", payload); // DEBUGGER
 
     btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin me-2"></i>Processing...');
 
@@ -658,7 +670,6 @@ $(document).ready(function () {
         Authorization: "Bearer " + currentToken,
       },
       success: function (data) {
-        console.log("5. Success response from backend:", data); // DEBUGGER
         const paymentModalEl = document.getElementById("paymentModal");
         const paymentModal = bootstrap.Modal.getInstance(paymentModalEl);
         if (paymentModal) paymentModal.hide();
@@ -669,7 +680,6 @@ $(document).ready(function () {
           text: "Your order has been successfully placed via COD.",
           timer: 2000,
         }).then(() => {
-          // Itira sa cart ang mga hindi naka-select
           const remainingItems = cart.filter(item => item.isSelected === false);
           localStorage.setItem(cartKey, JSON.stringify(remainingItems));
           
@@ -682,7 +692,6 @@ $(document).ready(function () {
             if (cartCanvas) cartCanvas.hide();
           }
 
-          // I-refresh ang books data
           $.ajax({
             method: "GET",
             url: `${url}/api/v1/books`,
@@ -695,7 +704,6 @@ $(document).ready(function () {
         });
       },
       error: function (error) {
-        console.error("5. Error response from backend:", error); // DEBUGGER
         btn.prop("disabled", false).html('<i class="fas fa-credit-card me-2"></i>Confirm Payment & Place Order');
 
         const responseError = error.responseJSON && error.responseJSON.error;
@@ -722,7 +730,7 @@ $(document).ready(function () {
     });
   });
   
-  // Kapag pinindot ang checkbox sa cart
+  // Toggle selection
   $(document).on("change", ".select-cart-item", function () {
     const id = $(this).data("id");
     const isChecked = $(this).is(":checked");
@@ -731,7 +739,7 @@ $(document).ready(function () {
     const item = cart.find((entry) => String(entry.id) === String(id));
     if (item) {
       item.isSelected = isChecked;
-      saveCart(cart); // Magre-recompute ng total automatically
+      saveCart(cart);
     }
   });
 

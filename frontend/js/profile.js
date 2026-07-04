@@ -1,5 +1,4 @@
 $(document).ready(function () {
-  //const url = "http://localhost:3000";
   const url = `http://${window.location.hostname}:3000`;
   const rawToken = sessionStorage.getItem("token");
   const token = rawToken ? rawToken.replace(/"/g, "") : null;
@@ -16,15 +15,18 @@ $(document).ready(function () {
   let allOrders = [];
   let orderIdToCancel = null;
 
+  // Parse price
   function parsePrice(price) {
     const value = Number(price);
     return Number.isFinite(value) ? value : 0;
   }
 
+  // Format money
   function formatMoney(amount) {
     return `₱${parsePrice(amount).toFixed(2)}`;
   }
 
+  // Format date
   function formatDate(dateValue) {
     if (!dateValue) return "-";
     return new Date(dateValue).toLocaleDateString("en-US", {
@@ -34,18 +36,22 @@ $(document).ready(function () {
     });
   }
 
+  // Display value
   function displayValue(value) {
     return value ? value : "-";
   }
 
+  // Get profile
   function getProfileUser(data) {
     return data.user || data.result || data;
   }
 
+  // Build name
   function getFullName(user) {
     return `${user.first_name || ""} ${user.last_name || ""}`.trim();
   }
 
+  // Validate field
   function validateRequiredField($field) {
     if (!$field.val().trim()) {
       $field.addClass("is-invalid").removeClass("is-valid");
@@ -56,6 +62,7 @@ $(document).ready(function () {
     return true;
   }
 
+  // Validate form
   function validateRequiredFields($form) {
     let isValid = true;
 
@@ -68,10 +75,12 @@ $(document).ready(function () {
     return isValid;
   }
 
+  // Clear validation
   function clearValidationState($form) {
     $form.find(".required-field").removeClass("is-invalid is-valid");
   }
 
+  // Update profile
   function updateProfileDisplay(user) {
     const customer = user.Customer || user.customer || {};
     const firstName = user.first_name || "";
@@ -96,10 +105,12 @@ $(document).ready(function () {
 
   }
 
+  // Get lines
   function getOrderLines(order) {
     return order.OrderLines || order.orderlines || order.order_lines || [];
   }
 
+  // Get total
   function getOrderTotal(order) {
     const itemsTotal = getOrderLines(order).reduce((sum, item) => {
       return sum + parsePrice(item.price) * parsePrice(item.quantity);
@@ -107,6 +118,7 @@ $(document).ready(function () {
     return itemsTotal + parsePrice(order.shipping_fee || 100);
   }
 
+  // Badge status
   function getStatusBadge(status) {
     let badgeClass = "bg-secondary";
     if (status === "Pending") badgeClass = "bg-warning text-dark";
@@ -117,10 +129,12 @@ $(document).ready(function () {
     return `<span class="badge ${badgeClass}">${status || "Processing"}</span>`;
   }
 
+  // Check cancel
   function canCancelOrder(status) {
     return ["Pending", "Processing"].includes(status);
   }
 
+  // Render orders
   function renderOrders(orders) {
     if (!orders || orders.length === 0) {
       $("#ordersTableBody").html(`
@@ -163,6 +177,7 @@ $(document).ready(function () {
     $("#ordersTableBody").html(html);
   }
 
+  // Load profile
   function loadProfile() {
     $.ajax({
       method: "GET",
@@ -183,6 +198,7 @@ $(document).ready(function () {
     });
   }
 
+  // Load orders
   function loadOrders() {
     $.ajax({
       method: "GET",

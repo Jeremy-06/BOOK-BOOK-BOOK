@@ -26,10 +26,12 @@ $(document).ready(function () {
     reactivateModalElement,
   );
 
+  // Escape value
   function escapeHtml(value) {
     return $("<div>").text(value || "").html();
   }
 
+  // Full name
   function getFullName(user) {
     return (
       `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
@@ -37,6 +39,7 @@ $(document).ready(function () {
     );
   }
 
+  // Render row
   function renderUserRow(user) {
     const roleBadge =
       user.role === "admin"
@@ -66,6 +69,7 @@ $(document).ready(function () {
     `;
   }
 
+  // Fetch users
   function fetchUsers() {
     if (isFetching || !hasMoreUsers) return;
 
@@ -98,6 +102,7 @@ $(document).ready(function () {
     });
   }
 
+  // Refresh users
   function refreshUsers() {
     currentPage = 1;
     hasMoreUsers = true;
@@ -107,6 +112,7 @@ $(document).ready(function () {
   }
 
   $(".custom-table-scroll").on("scroll", function () {
+    // Check scroll bottom
     if (
       Math.ceil($(this).scrollTop() + $(this).innerHeight()) >=
       $(this)[0].scrollHeight - 5
@@ -136,6 +142,7 @@ $(document).ready(function () {
     clearTimeout(searchDebounceTimer);
     searchQuery = $(this).val().trim();
 
+    // Debounce search
     searchDebounceTimer = setTimeout(function () {
       refreshUsers();
     }, 300);
