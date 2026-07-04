@@ -10,6 +10,22 @@ const parsePositiveInt = (value, fallback) => {
     return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 };
 
+const getSortOrder = (value) =>
+    String(value || 'DESC').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+const getOrderSortColumn = (value) => {
+    const sortColumns = {
+        id: 'id',
+        date_placed: 'date_placed',
+        date_shipped: 'date_shipped',
+        status: 'status',
+        shipping_fee: 'shipping_fee',
+        payment_method: 'payment_method'
+    };
+
+    return sortColumns[value] || sortColumns.id;
+};
+
 const createOrder = async (req, res) => {
     console.log('createOrder controller entered');
     let t;
@@ -103,6 +119,8 @@ const getAllOrders = async (req, res) => {
     try {
         const page = parsePositiveInt(req.query.page, 1);
         const limit = parsePositiveInt(req.query.limit, 0);
+        const sortBy = getOrderSortColumn(req.query.sortBy || 'id');
+        const sortOrder = getSortOrder(req.query.sortOrder || 'DESC');
         const queryOptions = {
             include: [
                 { model: db.User, attributes: ['id', 'first_name', 'last_name', 'email'] },
@@ -111,7 +129,7 @@ const getAllOrders = async (req, res) => {
                     include: [{ model: db.Book, attributes: ['title', 'price'] }] 
                 }
             ],
-            order: [['date_placed', 'DESC']],
+            order: [[sortBy, sortOrder]],
             distinct: true
         };
 

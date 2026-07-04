@@ -232,8 +232,8 @@ $(document).ready(function () {
     saveCart(cart);
     Swal.fire({
       icon: "success",
-      text: "Added to cart",
-      timer: 1200,
+      title: "Added to Cart",
+      timer: 1500,
       showConfirmButton: false,
     });
   }
@@ -449,7 +449,11 @@ $(document).ready(function () {
     console.log("3. Selected Items for checkout:", selectedItems); // DEBUGGER
 
     if (selectedItems.length === 0) {
-      Swal.fire({ icon: "warning", text: "Please select at least one item to checkout." });
+      Swal.fire({
+        icon: "warning",
+        title: "Cart is empty",
+        text: "Please select at least one item to checkout.",
+      });
       return;
     }
 
@@ -485,10 +489,14 @@ $(document).ready(function () {
 
     const selectedItems = checkoutSelectedItems;
     const cart = checkoutCart;
-    const paymentMethod = $("#paymentMethod").val();
+    const paymentMethod = "Cash on Delivery";
 
     if (selectedItems.length === 0) {
-      Swal.fire({ icon: "warning", text: "Please select at least one item to checkout." });
+      Swal.fire({
+        icon: "warning",
+        title: "Cart is empty",
+        text: "Please select at least one item to checkout.",
+      });
       return;
     }
 
@@ -540,10 +548,9 @@ $(document).ready(function () {
 
         Swal.fire({
           icon: "success",
-          title: "Order Successful!",
-          text: "Your transaction is complete.",
+          title: "Order Placed!",
+          text: "Your order has been successfully placed via COD.",
           timer: 2000,
-          showConfirmButton: false,
         }).then(() => {
           // Itira sa cart ang mga hindi naka-select
           const remainingItems = cart.filter(item => item.isSelected === false);
@@ -574,13 +581,15 @@ $(document).ready(function () {
         console.error("5. Error response from backend:", error); // DEBUGGER
         btn.prop("disabled", false).html('<i class="fas fa-credit-card me-2"></i>Confirm Payment & Place Order');
 
-        if (error.responseJSON && error.responseJSON.error === "IncompleteProfile") {
+        const responseError = error.responseJSON && error.responseJSON.error;
+        const isIncompleteProfile =
+          responseError === "IncompleteProfile" || error.status === 403;
+
+        if (isIncompleteProfile) {
           Swal.fire({
-            icon: "warning",
+            icon: "error",
             title: "Profile Incomplete",
-            text: error.responseJSON.message,
-            timer: 2200,
-            showConfirmButton: false,
+            text: "Please update your address and phone number before ordering.",
           }).then(() => {
             window.location.href = "profile.html";
           });
@@ -589,7 +598,8 @@ $(document).ready(function () {
 
         Swal.fire({
           icon: "error",
-          text: error.responseJSON && error.responseJSON.error ? error.responseJSON.error : "Transaction failed. Please try again.",
+          title: "Checkout Failed",
+          text: responseError || "Transaction failed. Please try again.",
         });
       },
     });

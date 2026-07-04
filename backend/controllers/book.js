@@ -9,6 +9,25 @@ function parsePositiveInt(value, fallback) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function getSortOrder(value) {
+  return String(value || "DESC").toUpperCase() === "ASC" ? "ASC" : "DESC";
+}
+
+function getBookSortColumn(value) {
+  const sortColumns = {
+    id: "book_id",
+    book_id: "book_id",
+    title: "title",
+    author: "author",
+    price: "price",
+    isbn: "isbn",
+    created_at: "created_at",
+    updated_at: "updated_at",
+  };
+
+  return sortColumns[value] || sortColumns.id;
+}
+
 function parseStoredImages(value) {
   if (!value) return [];
 
@@ -129,6 +148,8 @@ exports.getAllBooks = async (req, res) => {
   try {
     const page = parsePositiveInt(req.query.page, 1);
     const limit = parsePositiveInt(req.query.limit, 0);
+    const sortBy = getBookSortColumn(req.query.sortBy || "id");
+    const sortOrder = getSortOrder(req.query.sortOrder || "DESC");
     const queryOptions = {
       include: [
         { model: Stock },
@@ -138,7 +159,7 @@ exports.getAllBooks = async (req, res) => {
           required: false,
         },
       ],
-      order: [["book_id", "DESC"]],
+      order: [[sortBy, sortOrder]],
       distinct: true,
     };
 

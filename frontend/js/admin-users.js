@@ -1,9 +1,11 @@
 $(document).ready(function () {
   const url = `http://${window.location.hostname}:3000`;
-  const limit = 10;
+  const limit = 25;
   let currentPage = 1;
   let isFetching = false;
   let hasMoreUsers = true;
+  let currentSortBy = "id";
+  let currentSortOrder = "DESC";
 
   const rawToken = sessionStorage.getItem("token");
   const token = rawToken ? rawToken.replace(/"/g, "") : null;
@@ -69,7 +71,7 @@ $(document).ready(function () {
 
     $.ajax({
       method: "GET",
-      url: `${url}/api/v1/users?page=${currentPage}&limit=${limit}`,
+      url: `${url}/api/v1/users?page=${currentPage}&limit=${limit}&sortBy=${currentSortBy}&sortOrder=${currentSortOrder}`,
       dataType: "json",
       success: function (data) {
         const users = data.rows || [];
@@ -102,14 +104,30 @@ $(document).ready(function () {
     fetchUsers();
   }
 
-  $("#usersTableContainer").on("scroll", function () {
-    const container = this;
-    const distanceFromBottom =
-      container.scrollHeight - container.scrollTop - container.clientHeight;
-
-    if (distanceFromBottom < 80) {
+  $(".custom-table-scroll").on("scroll", function () {
+    if (
+      Math.ceil($(this).scrollTop() + $(this).innerHeight()) >=
+      $(this)[0].scrollHeight - 5
+    ) {
       fetchUsers();
     }
+  });
+
+  $("#usersTable").on("click", "th.sortable", function () {
+    const sortBy = $(this).data("sort");
+
+    if (currentSortBy === sortBy) {
+      currentSortOrder = currentSortOrder === "ASC" ? "DESC" : "ASC";
+    } else {
+      currentSortBy = sortBy;
+      currentSortOrder = "ASC";
+    }
+
+    currentPage = 1;
+    hasMoreUsers = true;
+    isFetching = false;
+    $("#usersTable tbody").empty();
+    fetchUsers();
   });
 
   $("#usersTable tbody").on("click", ".editRoleBtn", function () {

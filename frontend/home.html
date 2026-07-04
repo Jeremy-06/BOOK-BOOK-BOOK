@@ -12,6 +12,10 @@
       href="https://use.fontawesome.com/releases/v5.0.6/css/all.css"
       rel="stylesheet"
     />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.16.1/sweetalert2.css"
+    />
 
     <style>
       :root {
@@ -440,14 +444,15 @@
             </div>
 
             <div class="mb-3">
-              <label for="paymentMethod" class="form-label fw-semibold">
-                Payment Method
-              </label>
-              <select class="form-select form-select-lg" id="paymentMethod">
-                <option value="Cash on Delivery">Cash on Delivery</option>
-                <option value="GCash">GCash</option>
-                <option value="Credit/Debit Card">Credit/Debit Card</option>
-              </select>
+              <div class="form-label fw-semibold">Payment Method</div>
+              <div class="form-control form-control-lg bg-light">
+                Cash on Delivery
+              </div>
+              <input
+                type="hidden"
+                id="paymentMethod"
+                value="Cash on Delivery"
+              />
             </div>
           </div>
           <div class="modal-footer border-0 px-4 pb-4">
@@ -468,6 +473,7 @@
 
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.16.1/sweetalert2.min.js"></script>
     <script src="js/home.js"></script>
   </body>
 </html>

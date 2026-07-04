@@ -12,6 +12,24 @@ const parsePositiveInt = (value, fallback) => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 };
 
+const getSortOrder = (value) =>
+  String(value || "DESC").toUpperCase() === "ASC" ? "ASC" : "DESC";
+
+const getUserSortColumn = (value) => {
+  const sortColumns = {
+    id: "id",
+    first_name: "first_name",
+    last_name: "last_name",
+    email: "email",
+    role: "role",
+    deleted_at: "deleted_at",
+    created_at: "created_at",
+    updated_at: "updated_at",
+  };
+
+  return sortColumns[value] || sortColumns.id;
+};
+
 const registerUser = async (req, res) => {
   try {
     const { first_name, last_name, password, email } = req.body;
@@ -315,9 +333,11 @@ const getAllUsers = async (req, res) => {
   try {
     const page = parsePositiveInt(req.query.page, 1);
     const limit = parsePositiveInt(req.query.limit, 0);
+    const sortBy = getUserSortColumn(req.query.sortBy || "id");
+    const sortOrder = getSortOrder(req.query.sortOrder || "DESC");
     const queryOptions = {
       attributes: { exclude: ["password"] },
-      order: [["id", "DESC"]],
+      order: [[sortBy, sortOrder]],
     };
 
     if (limit > 0) {
