@@ -27,6 +27,32 @@ $(document).ready(function () {
     return $("<div>").text(value || "").html();
   }
 
+  function validateRequiredField($field) {
+    if (!$field.val().trim()) {
+      $field.addClass("is-invalid").removeClass("is-valid");
+      return false;
+    }
+
+    $field.addClass("is-valid").removeClass("is-invalid");
+    return true;
+  }
+
+  function validateRequiredFields($form) {
+    let isValid = true;
+
+    $form.find(".required-field").each(function () {
+      if (!validateRequiredField($(this))) {
+        isValid = false;
+      }
+    });
+
+    return isValid;
+  }
+
+  function clearValidationState($form) {
+    $form.find(".required-field").removeClass("is-invalid is-valid");
+  }
+
   function parseImages(imageValue) {
     if (!imageValue) return [];
 
@@ -285,6 +311,7 @@ $(document).ready(function () {
   $("#addBookBtn").on("click", function () {
     $("#bookId").remove();
     $("#bform").trigger("reset");
+    clearValidationState($("#bform"));
     resetImageQueue();
     $("#bookUpdate").hide();
     $("#bookSubmit").show();
@@ -355,12 +382,31 @@ $(document).ready(function () {
     renderImagePreviews();
   });
 
-  $("#bookSubmit").on("click", function (e) {
+  $("#bform").on("input change", ".required-field", function () {
+    validateRequiredField($(this));
+  });
+
+  $("#bform").on("submit", function (e) {
     e.preventDefault();
 
+    const $form = $(this);
+    const submitter = e.originalEvent ? e.originalEvent.submitter : null;
+    const isUpdate =
+      (submitter && submitter.id === "bookUpdate") ||
+      (!submitter && $("#bookId").length > 0);
+    const id = $("#bookId").val();
+
+    if (!validateRequiredFields($form)) {
+      return Swal.fire({
+        icon: "error",
+        title: "Validation Error",
+        text: "Please fill in all required fields highlighted in red.",
+      });
+    }
+
     $.ajax({
-      method: "POST",
-      url: `${url}/api/v1/books`,
+      method: isUpdate ? "PUT" : "POST",
+      url: isUpdate ? `${url}/api/v1/books/${id}` : `${url}/api/v1/books`,
       data: buildBookFormData(),
       contentType: false,
       processData: false,
@@ -369,15 +415,19 @@ $(document).ready(function () {
         refreshBooks();
         Swal.fire({
           icon: "success",
-          title: "Added!",
-          text: "Book created successfully.",
+          title: isUpdate ? "Updated!" : "Added!",
+          text: isUpdate
+            ? "Book updated successfully."
+            : "Book created successfully.",
           timer: 1500,
         });
       },
       error: function (error) {
         Swal.fire({
           icon: "error",
-          text: error.responseJSON?.error || "An error occurred",
+          text:
+            error.responseJSON?.error ||
+            (isUpdate ? "Error updating book" : "An error occurred"),
         });
       },
     });
@@ -387,6 +437,7 @@ $(document).ready(function () {
     e.preventDefault();
     $("#bookId").remove();
     $("#bform").trigger("reset");
+    clearValidationState($("#bform"));
     resetImageQueue();
 
     const id = $(this).data("id");
@@ -418,35 +469,6 @@ $(document).ready(function () {
           ? `existing:${mainImage.book_image_id}`
           : null;
         renderImagePreviews();
-      },
-    });
-  });
-
-  $("#bookUpdate").on("click", function (e) {
-    e.preventDefault();
-    const id = $("#bookId").val();
-
-    $.ajax({
-      method: "PUT",
-      url: `${url}/api/v1/books/${id}`,
-      data: buildBookFormData(),
-      contentType: false,
-      processData: false,
-      success: function () {
-        $("#bookModal").modal("hide");
-        refreshBooks();
-        Swal.fire({
-          icon: "success",
-          title: "Updated!",
-          text: "Book updated successfully.",
-          timer: 1500,
-        });
-      },
-      error: function (error) {
-        Swal.fire({
-          icon: "error",
-          text: error.responseJSON?.error || "Error updating book",
-        });
       },
     });
   });

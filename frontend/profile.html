@@ -201,52 +201,57 @@
               aria-label="Close"
             ></button>
           </div>
-          <form id="editProfileForm">
+          <form id="editProfileForm" novalidate>
             <div class="modal-body p-4">
               <div class="row g-3">
                 <div class="col-md-6">
                   <label for="editFirstName" class="form-label">First Name</label>
                   <input
                     type="text"
-                    class="form-control"
+                    class="form-control required-field"
                     id="editFirstName"
                     name="first_name"
+                    required
                   />
                 </div>
                 <div class="col-md-6">
                   <label for="editLastName" class="form-label">Last Name</label>
                   <input
                     type="text"
-                    class="form-control"
+                    class="form-control required-field"
                     id="editLastName"
                     name="last_name"
+                    required
                   />
                 </div>
                 <div class="col-md-6">
                   <label for="editPhone" class="form-label">Phone</label>
                   <input
                     type="text"
-                    class="form-control"
+                    class="form-control required-field"
                     id="editPhone"
                     name="phone"
+                    required
                   />
                 </div>
                 <div class="col-md-6">
                   <label for="editZipCode" class="form-label">ZIP Code</label>
                   <input
                     type="text"
-                    class="form-control"
+                    class="form-control required-field"
                     id="editZipCode"
                     name="zip_code"
+                    required
                   />
                 </div>
                 <div class="col-12">
                   <label for="editAddress" class="form-label">Address</label>
                   <textarea
-                    class="form-control"
+                    class="form-control required-field"
                     id="editAddress"
                     name="address"
                     rows="3"
+                    required
                   ></textarea>
                 </div>
               </div>

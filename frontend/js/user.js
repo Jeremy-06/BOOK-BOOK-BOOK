@@ -3,18 +3,48 @@ $(document).ready(function () {
   //const url = "http://localhost:3000";
   const url = `http://${window.location.hostname}:3000`;
 
-  $("#registerBtn").on("click", function (e) {
+  function validateRequiredField($field) {
+    if (!$field.val().trim()) {
+      $field.addClass("is-invalid").removeClass("is-valid");
+      return false;
+    }
+
+    $field.addClass("is-valid").removeClass("is-invalid");
+    return true;
+  }
+
+  function validateRequiredFields($form) {
+    let isValid = true;
+
+    $form.find(".required-field").each(function () {
+      if (!validateRequiredField($(this))) {
+        isValid = false;
+      }
+    });
+
+    return isValid;
+  }
+
+  $("#registerForm").on("input change", ".required-field", function () {
+    validateRequiredField($(this));
+  });
+
+  $("#registerForm").on("submit", function (e) {
     e.preventDefault();
+
+    if (!validateRequiredFields($(this))) {
+      return Swal.fire({
+        icon: "error",
+        title: "Validation Error",
+        text: "Please fill in all required fields highlighted in red.",
+      });
+    }
 
     let first_name = $("#firstName").val();
     let last_name = $("#lastName").val();
     let email = $("#email").val();
     let password = $("#password").val();
     let confirmPassword = $("#confirmPassword").val();
-
-    if (!first_name || !last_name || !email || !password || !confirmPassword) {
-      return Swal.fire({ icon: "error", text: "Please fill in all fields." });
-    }
 
     if (password !== confirmPassword) {
       return Swal.fire({ icon: "error", text: "Passwords do not match." });

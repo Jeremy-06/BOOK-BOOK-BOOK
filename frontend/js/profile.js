@@ -45,6 +45,32 @@ $(document).ready(function () {
     return `${user.first_name || ""} ${user.last_name || ""}`.trim();
   }
 
+  function validateRequiredField($field) {
+    if (!$field.val().trim()) {
+      $field.addClass("is-invalid").removeClass("is-valid");
+      return false;
+    }
+
+    $field.addClass("is-valid").removeClass("is-invalid");
+    return true;
+  }
+
+  function validateRequiredFields($form) {
+    let isValid = true;
+
+    $form.find(".required-field").each(function () {
+      if (!validateRequiredField($(this))) {
+        isValid = false;
+      }
+    });
+
+    return isValid;
+  }
+
+  function clearValidationState($form) {
+    $form.find(".required-field").removeClass("is-invalid is-valid");
+  }
+
   function updateProfileDisplay(user) {
     const customer = user.Customer || user.customer || {};
     const firstName = user.first_name || "";
@@ -171,6 +197,14 @@ $(document).ready(function () {
   $("#editProfileForm").on("submit", function (e) {
     e.preventDefault();
 
+    if (!validateRequiredFields($(this))) {
+      return Swal.fire({
+        icon: "error",
+        title: "Validation Error",
+        text: "Please fill in all required fields highlighted in red.",
+      });
+    }
+
     const profileData = {
       first_name: $("#editFirstName").val(),
       last_name: $("#editLastName").val(),
@@ -220,6 +254,14 @@ $(document).ready(function () {
     });
   });
 
+  $("#editProfileForm").on("input change", ".required-field", function () {
+    validateRequiredField($(this));
+  });
+
+  $("#editProfileModal").on("show.bs.modal", function () {
+    clearValidationState($("#editProfileForm"));
+  });
+
   $(document).on("click", ".viewOrderBtn", function () {
     const orderId = $(this).data("id");
     const order = allOrders.find((item) => String(item.id) === String(orderId));
@@ -266,9 +308,22 @@ $(document).ready(function () {
     modal.show();
   });
 
-  $(document).on("click", "#logoutBtn", function () {
-    sessionStorage.clear();
-    window.location.href = "home.html";
+  $(document).on("click", "#logoutBtn", function (e) {
+    e.preventDefault();
+
+    Swal.fire({
+      icon: "warning",
+      title: "Ready to Leave?",
+      text: "Are you sure you want to logout?",
+      showCancelButton: true,
+      confirmButtonText: "Yes, logout",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = "login.html";
+      }
+    });
   });
 
   loadProfile();

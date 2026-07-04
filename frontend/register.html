@@ -75,7 +75,7 @@
   <body>
     <div class="register-card">
       <h2>Create an Account</h2>
-      <form id="registerForm">
+      <form id="registerForm" novalidate>
         <div class="row">
           <div class="col-md-6">
             <label for="firstName" class="form-label fw-bold">First Name</label>
@@ -83,7 +83,7 @@
               type="text"
               id="firstName"
               name="first_name"
-              class="form-control"
+              class="form-control required-field"
               placeholder="John"
               required
             />
@@ -94,7 +94,7 @@
               type="text"
               id="lastName"
               name="last_name"
-              class="form-control"
+              class="form-control required-field"
               placeholder="Doe"
               required
             />
@@ -107,7 +107,7 @@
             type="email"
             id="email"
             name="email"
-            class="form-control"
+            class="form-control required-field"
             placeholder="name@example.com"
             required
           />
@@ -119,7 +119,7 @@
             type="password"
             id="password"
             name="password"
-            class="form-control"
+            class="form-control required-field"
             placeholder="••••••••"
             required
           />
@@ -133,7 +133,7 @@
             type="password"
             id="confirmPassword"
             name="confirmPassword"
-            class="form-control"
+            class="form-control required-field"
             placeholder="••••••••"
             required
           />

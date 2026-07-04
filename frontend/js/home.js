@@ -433,8 +433,20 @@ $(document).ready(function () {
 
   $(document).on("click", "#logoutBtn", function (e) {
     e.preventDefault();
-    sessionStorage.clear();
-    window.location.href = "home.html";
+
+    Swal.fire({
+      icon: "warning",
+      title: "Ready to Leave?",
+      text: "Are you sure you want to logout?",
+      showCancelButton: true,
+      confirmButtonText: "Yes, logout",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = "login.html";
+      }
+    });
   });
 
   $(document).on("click", "#checkoutBtn", function (e) {

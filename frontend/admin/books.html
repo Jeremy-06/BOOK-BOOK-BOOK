@@ -151,13 +151,13 @@
             ></button>
           </div>
           <div class="modal-body">
-            <form id="bform">
+            <form id="bform" novalidate>
               <div class="row">
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Title</label>
                   <input
                     type="text"
-                    class="form-control"
+                    class="form-control required-field"
                     id="title"
                     name="title"
                     required
@@ -167,7 +167,7 @@
                   <label class="form-label">Author</label>
                   <input
                     type="text"
-                    class="form-control"
+                    class="form-control required-field"
                     id="author"
                     name="author"
                     required
@@ -189,7 +189,7 @@
                   <input
                     type="number"
                     step="0.01"
-                    class="form-control"
+                    class="form-control required-field"
                     id="price"
                     name="price"
                     required
@@ -199,7 +199,7 @@
                   <label class="form-label">ISBN</label>
                   <input
                     type="text"
-                    class="form-control"
+                    class="form-control required-field"
                     id="isbn"
                     name="isbn"
                     required
@@ -209,7 +209,7 @@
                   <label class="form-label">Quantity</label>
                   <input
                     type="number"
-                    class="form-control"
+                    class="form-control required-field"
                     id="qty"
                     name="quantity"
                     required
@@ -241,10 +241,20 @@
             >
               Close
             </button>
-            <button id="bookSubmit" type="button" class="btn btn-primary">
+            <button
+              id="bookSubmit"
+              type="submit"
+              form="bform"
+              class="btn btn-primary"
+            >
               Save Book
             </button>
-            <button id="bookUpdate" type="button" class="btn btn-success">
+            <button
+              id="bookUpdate"
+              type="submit"
+              form="bform"
+              class="btn btn-success"
+            >
               Update Book
             </button>
           </div>
