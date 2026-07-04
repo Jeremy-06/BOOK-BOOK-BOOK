@@ -1,13 +1,16 @@
 $(document).ready(function () {
-  //const url = "http://localhost:3000";
   const url = `http://${window.location.hostname}:3000`;
+  const limit = 10;
+  let currentPage = 1;
+  let isFetching = false;
+  let hasMoreOrders = true;
+  let allOrders = [];
+
   const rawToken = sessionStorage.getItem("token");
   const token = rawToken ? rawToken.replace(/"/g, "") : null;
-
   const rawRole = sessionStorage.getItem("role");
   const userRole = rawRole ? rawRole.replace(/"/g, "") : null;
 
-  // Security Check
   if (!token || userRole !== "admin") {
     Swal.fire({ icon: "error", text: "Access Denied. Admins only." }).then(
       () => (window.location.href = "../home.html"),
@@ -15,80 +18,123 @@ $(document).ready(function () {
     return;
   }
 
-  let allOrders = []; // Dito natin ise-save ang data para makuha mamaya sa modal
-
-  function getFullName(user) {
-    return user ? `${user.first_name || ""} ${user.last_name || ""}`.trim() || "Unknown User" : "Unknown User";
+  function escapeHtml(value) {
+    return $("<div>").text(value || "").html();
   }
 
-  // Initialize DataTable
-  const table = $("#ordersTable").DataTable({
-    ajax: {
-      url: `${url}/api/v1/orders`,
-      dataSrc: function (json) {
-        allOrders = json.rows; // I-save sa variable
-        return json.rows;
-      },
+  function getFullName(user) {
+    return user
+      ? `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
+          "Unknown User"
+      : "Unknown User";
+  }
+
+  function getOrderItemsTotal(order) {
+    return order.OrderLines
+      ? order.OrderLines.reduce(
+          (sum, item) => sum + parseFloat(item.price) * item.quantity,
+          0,
+        )
+      : 0;
+  }
+
+  function getOrderItemsCount(order) {
+    return order.OrderLines
+      ? order.OrderLines.reduce((sum, item) => sum + item.quantity, 0)
+      : 0;
+  }
+
+  function renderStatusBadge(status) {
+    let badgeClass = "bg-secondary";
+    if (status === "Processing") badgeClass = "bg-primary";
+    if (status === "Shipped") badgeClass = "bg-info";
+    if (status === "Delivered") badgeClass = "bg-success";
+    if (status === "Cancelled") badgeClass = "bg-danger";
+    return `<span class="badge ${badgeClass}">${escapeHtml(status)}</span>`;
+  }
+
+  function renderOrderRow(order) {
+    const shipping = parseFloat(order.shipping_fee) || 100;
+    const total = shipping + getOrderItemsTotal(order);
+    const datePlaced = order.date_placed
+      ? new Date(order.date_placed).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        })
+      : "-";
+
+    return `
+      <tr data-id="${order.id}">
+        <td><strong>#${order.id}</strong></td>
+        <td>${escapeHtml(getFullName(order.User))}</td>
+        <td>${escapeHtml(datePlaced)}</td>
+        <td>${getOrderItemsCount(order)}</td>
+        <td>PHP ${total.toFixed(2)}</td>
+        <td>${renderStatusBadge(order.status)}</td>
+        <td>
+          <button class="btn btn-sm btn-outline-dark viewOrderBtn" data-id="${order.id}"><i class="fas fa-eye"></i> View</button>
+        </td>
+      </tr>
+    `;
+  }
+
+  function fetchOrders() {
+    if (isFetching || !hasMoreOrders) return;
+
+    isFetching = true;
+
+    $.ajax({
+      method: "GET",
+      url: `${url}/api/v1/orders?page=${currentPage}&limit=${limit}`,
+      dataType: "json",
       headers: { Authorization: "Bearer " + token },
-    },
-    columns: [
-      { data: "id", render: (data) => `<strong>#${data}</strong>` },
-      {
-        data: "User",
-        render: (data) => getFullName(data),
+      success: function (data) {
+        const orders = data.rows || [];
+
+        if (currentPage === 1 && orders.length === 0) {
+          $("#ordersTable tbody").html(
+            '<tr><td colspan="7" class="text-center text-muted py-4">No orders found.</td></tr>',
+          );
+        } else {
+          allOrders = [...allOrders, ...orders];
+          $("#ordersTable tbody").append(orders.map(renderOrderRow).join(""));
+        }
+
+        hasMoreOrders = Boolean(data.hasMore);
+        currentPage += 1;
       },
-      {
-        data: "date_placed",
-        render: (data) =>
-          new Date(data).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          }),
+      error: function () {
+        Swal.fire({ icon: "error", text: "Unable to load orders." });
       },
-      {
-        data: "OrderLines",
-        render: function (data) {
-          return data ? data.reduce((sum, item) => sum + item.quantity, 0) : 0;
-        },
+      complete: function () {
+        isFetching = false;
       },
-      {
-        data: null,
-        render: function (data) {
-          let shipping = parseFloat(data.shipping_fee) || 100;
-          let itemsTotal = data.OrderLines
-            ? data.OrderLines.reduce(
-                (sum, item) => sum + parseFloat(item.price) * item.quantity,
-                0,
-              )
-            : 0;
-          return `₱${(shipping + itemsTotal).toFixed(2)}`;
-        },
-      },
-      {
-        data: "status",
-        render: function (data) {
-          let badgeClass = "bg-secondary";
-          if (data === "Processing") badgeClass = "bg-primary";
-          if (data === "Shipped") badgeClass = "bg-info";
-          if (data === "Delivered") badgeClass = "bg-success";
-          if (data === "Cancelled") badgeClass = "bg-danger";
-          return `<span class="badge ${badgeClass}">${data}</span>`;
-        },
-      },
-      {
-        data: null,
-        render: function (data) {
-          return `<button class="btn btn-sm btn-outline-dark viewOrderBtn" data-id="${data.id}"><i class="fas fa-eye"></i> View</button>`;
-        },
-      },
-    ],
+    });
+  }
+
+  function refreshOrders() {
+    currentPage = 1;
+    hasMoreOrders = true;
+    isFetching = false;
+    allOrders = [];
+    $("#ordersTable tbody").empty();
+    fetchOrders();
+  }
+
+  $("#ordersTableContainer").on("scroll", function () {
+    const container = this;
+    const distanceFromBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
+
+    if (distanceFromBottom < 80) {
+      fetchOrders();
+    }
   });
 
-  // View Order Details Modal
   $("#ordersTable tbody").on("click", ".viewOrderBtn", function () {
     const orderId = $(this).data("id");
-    const order = allOrders.find((o) => o.id === orderId);
+    const order = allOrders.find((item) => item.id === orderId);
 
     if (!order) return;
 
@@ -101,16 +147,16 @@ $(document).ready(function () {
 
     if (order.OrderLines && order.OrderLines.length > 0) {
       order.OrderLines.forEach((item) => {
-        let sub = parseFloat(item.price) * item.quantity;
-        itemsTotal += sub;
+        const subtotal = parseFloat(item.price) * item.quantity;
+        itemsTotal += subtotal;
         itemsHtml += `
-                    <tr>
-                        <td>${item.Book ? item.Book.title : "Unknown Book"}</td>
-                        <td>${item.quantity}</td>
-                        <td>₱${parseFloat(item.price).toFixed(2)}</td>
-                        <td>₱${sub.toFixed(2)}</td>
-                    </tr>
-                `;
+          <tr>
+            <td>${escapeHtml(item.Book ? item.Book.title : "Unknown Book")}</td>
+            <td>${item.quantity}</td>
+            <td>PHP ${parseFloat(item.price).toFixed(2)}</td>
+            <td>PHP ${subtotal.toFixed(2)}</td>
+          </tr>
+        `;
       });
     } else {
       itemsHtml =
@@ -119,20 +165,15 @@ $(document).ready(function () {
 
     $("#modalItemsBody").html(itemsHtml);
 
-    let shipping = parseFloat(order.shipping_fee) || 100;
-    $("#modalShipping").text(`₱${shipping.toFixed(2)}`);
-    $("#modalGrandTotal").text(`₱${(itemsTotal + shipping).toFixed(2)}`);
-
-    // I-set ang current status sa dropdown para i-update
+    const shipping = parseFloat(order.shipping_fee) || 100;
+    $("#modalShipping").text(`PHP ${shipping.toFixed(2)}`);
+    $("#modalGrandTotal").text(`PHP ${(itemsTotal + shipping).toFixed(2)}`);
     $("#updateStatusSelect").val(order.status || "Processing");
-
-    // I-save ang ID sa button para madaling kunin sa update
     $("#saveStatusBtn").data("id", order.id);
 
     $("#orderModal").modal("show");
   });
 
-  // Update Status
   $("#saveStatusBtn").on("click", function () {
     const orderId = $(this).data("id");
     const newStatus = $("#updateStatusSelect").val();
@@ -145,16 +186,18 @@ $(document).ready(function () {
       headers: { Authorization: "Bearer " + token },
       success: function () {
         $("#orderModal").modal("hide");
-        table.ajax.reload();
+        refreshOrders();
         Swal.fire({
           icon: "success",
           text: "Order status updated!",
           timer: 1500,
         });
       },
-      error: function (err) {
+      error: function () {
         Swal.fire({ icon: "error", text: "Failed to update status" });
       },
     });
   });
+
+  refreshOrders();
 });

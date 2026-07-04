@@ -1,8 +1,14 @@
 $(document).ready(function () {
-  //const url = "http://localhost:3000";
   const url = `http://${window.location.hostname}:3000`;
+  const limit = 10;
+  let currentPage = 1;
+  let isFetching = false;
+  let hasMoreBooks = true;
+  let selectedImages = [];
+  let existingImages = [];
+  let deletedImageIds = [];
+  let selectedMainCover = null;
 
-  // 1. Security Check: Admin lang pwede rito!
   const rawToken = sessionStorage.getItem("token");
   const token = rawToken ? rawToken.replace(/"/g, "") : null;
   const rawRole = sessionStorage.getItem("role");
@@ -15,86 +21,334 @@ $(document).ready(function () {
     return;
   }
 
-  // 2. Initialize DataTable
-  $("#btable").DataTable({
-    ajax: {
-      url: `${url}/api/v1/books`,
-      dataSrc: "rows",
-    },
-    dom: '<"row"<"col-sm-12 col-md-6"B><"col-sm-12 col-md-6"f>>rtip',
-    buttons: [
-      {
-        text: '<i class="fas fa-plus"></i> Add Book',
-        className: "btn btn-primary btn-sm ms-2",
-        action: function () {
-          $("#bform").trigger("reset");
-          $("#bookModal").modal("show");
-          $("#bookUpdate").hide();
-          $("#bookSubmit").show();
-          $("#bookImagePreview").remove();
-        },
-      },
-    ],
-    columns: [
-      { data: "book_id" },
-      {
-        data: null,
-        render: function (data) {
-          let images = [];
+  function escapeHtml(value) {
+    return $("<div>").text(value || "").html();
+  }
 
-          try {
-            images = data.img_path ? JSON.parse(data.img_path) : [];
-          } catch (error) {
-            images = data.img_path ? [data.img_path] : [];
-          }
+  function parseImages(imageValue) {
+    if (!imageValue) return [];
 
-          return images.length > 0
-            ? `<img src="${url}/${images[0]}" width="40" height="50" class="rounded">`
-            : '<span class="badge bg-secondary">No Image</span>';
-        },
+    try {
+      const parsed = JSON.parse(imageValue);
+      return Array.isArray(parsed) ? parsed : [imageValue];
+    } catch (error) {
+      return [imageValue];
+    }
+  }
+
+  function getBookImages(book) {
+    return getBookImageRecords(book).map((image) => image.path);
+  }
+
+  function getBookImageRecords(book) {
+    if (Array.isArray(book.BookImages) && book.BookImages.length > 0) {
+      return [...book.BookImages]
+        .sort((first, second) => Number(second.is_main) - Number(first.is_main))
+        .map((image) => ({
+          id: image.book_image_id,
+          path: image.image_path,
+          isMain: Boolean(image.is_main),
+        }));
+    }
+
+    return parseImages(book.img_path).map((imagePath, index) => ({
+      id: null,
+      path: imagePath,
+      isMain: index === 0,
+    }));
+  }
+
+  function getMainCoverValue() {
+    if (selectedMainCover) return selectedMainCover;
+
+    if (existingImages.length > 0) {
+      return existingImages[0].id
+        ? `existing:${existingImages[0].id}`
+        : `existing-path:${existingImages[0].path}`;
+    }
+
+    if (selectedImages.length > 0) {
+      return `new:${selectedImages[0].id}`;
+    }
+
+    return "";
+  }
+
+  function ensureMainCover() {
+    const mainCover = getMainCoverValue();
+    const isExistingMain =
+      mainCover.startsWith("existing:") &&
+      existingImages.some(
+        (image) => String(image.id) === mainCover.replace("existing:", ""),
+      );
+    const isLegacyExistingMain =
+      mainCover.startsWith("existing-path:") &&
+      existingImages.some(
+        (image) => image.path === mainCover.replace("existing-path:", ""),
+      );
+    const isNewMain =
+      mainCover.startsWith("new:") &&
+      selectedImages.some((image) => image.id === mainCover.replace("new:", ""));
+
+    selectedMainCover =
+      isExistingMain || isLegacyExistingMain || isNewMain ? mainCover : null;
+  }
+
+  function renderImagePreviews() {
+    ensureMainCover();
+
+    const mainCover = getMainCoverValue();
+    let previewHtml = "";
+
+    existingImages.forEach((image) => {
+      const mainValue = image.id
+        ? `existing:${image.id}`
+        : `existing-path:${image.path}`;
+      previewHtml += `
+        <div class="image-preview-item border rounded p-2 bg-light">
+          <img src="${url}/${image.path}" class="rounded border mb-2" alt="Book image preview">
+          <div class="form-check small">
+            <input class="form-check-input main-cover-radio" type="radio" name="mainCoverPreview" value="${escapeHtml(mainValue)}" ${mainCover === mainValue ? "checked" : ""}>
+            <label class="form-check-label">Set as Main Cover</label>
+          </div>
+          <button type="button" class="btn btn-danger btn-sm w-100 mt-2 remove-existing-image" data-id="${image.id || ""}" data-path="${escapeHtml(image.path)}">Delete</button>
+        </div>
+      `;
+    });
+
+    selectedImages.forEach((image) => {
+      const mainValue = `new:${image.id}`;
+      previewHtml += `
+        <div class="image-preview-item border rounded p-2 bg-light">
+          <button type="button" class="btn btn-danger btn-sm remove-image-btn remove-new-image" data-id="${image.id}">X</button>
+          <img src="${image.previewUrl}" class="rounded border mb-2" alt="Selected image preview">
+          <div class="form-check small">
+            <input class="form-check-input main-cover-radio" type="radio" name="mainCoverPreview" value="${mainValue}" ${mainCover === mainValue ? "checked" : ""}>
+            <label class="form-check-label">Set as Main Cover</label>
+          </div>
+        </div>
+      `;
+    });
+
+    $("#image-preview-container").html(previewHtml);
+  }
+
+  function resetImageQueue() {
+    selectedImages = [];
+    existingImages = [];
+    deletedImageIds = [];
+    selectedMainCover = null;
+    $("#img").val("");
+    $("#image-preview-container").empty();
+  }
+
+  function buildBookFormData() {
+    const formData = new FormData();
+
+    formData.append("title", $("#title").val());
+    formData.append("author", $("#author").val());
+    formData.append("description", $("#desc").val());
+    formData.append("price", $("#price").val());
+    formData.append("isbn", $("#isbn").val());
+    formData.append("quantity", $("#qty").val());
+    formData.append(
+      "existing_images",
+      JSON.stringify(existingImages.map((image) => image.path)),
+    );
+    formData.append("deletedImageIds", JSON.stringify(deletedImageIds));
+
+    const mainCover = getMainCoverValue();
+    if (mainCover.startsWith("new:")) {
+      const selectedImageId = mainCover.replace("new:", "");
+      const selectedImageIndex = selectedImages.findIndex(
+        (image) => image.id === selectedImageId,
+      );
+      const selectedImage = selectedImages[selectedImageIndex];
+      formData.append("main_cover", `new:${selectedImageIndex}`);
+      if (selectedImage) {
+        formData.append("main_cover_filename", selectedImage.file.name);
+      }
+    } else if (mainCover.startsWith("existing:")) {
+      const imageId = mainCover.replace("existing:", "");
+      formData.append("main_cover_id", imageId);
+      formData.append("main_cover", mainCover);
+    } else {
+      formData.append("main_cover", mainCover);
+    }
+
+    selectedImages.forEach((image) => {
+      formData.append("images", image.file);
+    });
+
+    return formData;
+  }
+
+  function getCoverImage(book) {
+    const images = getBookImages(book);
+    return images.length > 0
+      ? `<img src="${url}/${images[0]}" width="40" height="50" class="rounded" alt="Book cover">`
+      : '<span class="badge bg-secondary">No Image</span>';
+  }
+
+  function renderBookRow(book) {
+    const qty = book.Stock ? book.Stock.quantity : 0;
+    const stockHtml =
+      qty > 0
+        ? `<span class="badge bg-success">${qty}</span>`
+        : '<span class="badge bg-danger">Out of Stock</span>';
+
+    return `
+      <tr data-id="${book.book_id}">
+        <td>${book.book_id}</td>
+        <td>${getCoverImage(book)}</td>
+        <td>${escapeHtml(book.title)}</td>
+        <td>${escapeHtml(book.author)}</td>
+        <td>PHP ${escapeHtml(book.price)}</td>
+        <td>${escapeHtml(book.isbn)}</td>
+        <td>${stockHtml}</td>
+        <td>
+          <button class="btn btn-sm btn-outline-primary editBtn" data-id="${book.book_id}"><i class="fas fa-edit"></i></button>
+          <button class="btn btn-sm btn-outline-danger deleteBtn" data-id="${book.book_id}"><i class="fas fa-trash-alt"></i></button>
+        </td>
+      </tr>
+    `;
+  }
+
+  function fetchBooks() {
+    if (isFetching || !hasMoreBooks) return;
+
+    isFetching = true;
+
+    $.ajax({
+      method: "GET",
+      url: `${url}/api/v1/books?page=${currentPage}&limit=${limit}`,
+      dataType: "json",
+      success: function (data) {
+        const books = data.rows || [];
+
+        if (currentPage === 1 && books.length === 0) {
+          $("#bbody").html(
+            '<tr><td colspan="8" class="text-center text-muted py-4">No books found.</td></tr>',
+          );
+        } else {
+          $("#bbody").append(books.map(renderBookRow).join(""));
+        }
+
+        hasMoreBooks = Boolean(data.hasMore);
+        currentPage += 1;
       },
-      { data: "title" },
-      { data: "author" },
-      {
-        data: "price",
-        render: function (data) {
-          return `₱${data}`;
-        },
+      error: function () {
+        Swal.fire({ icon: "error", text: "Unable to load books." });
       },
-      { data: "isbn" },
-      {
-        data: null,
-        render: function (data) {
-          let qty = data.Stock ? data.Stock.quantity : 0;
-          return qty > 0
-            ? `<span class="badge bg-success">${qty}</span>`
-            : `<span class="badge bg-danger">Out of Stock</span>`;
-        },
+      complete: function () {
+        isFetching = false;
       },
-      {
-        data: null,
-        render: function (data) {
-          return `<button class="btn btn-sm btn-outline-primary editBtn" data-id="${data.book_id}"><i class="fas fa-edit"></i></button> 
-                            <button class="btn btn-sm btn-outline-danger deleteBtn" data-id="${data.book_id}"><i class="fas fa-trash-alt"></i></button>`;
-        },
-      },
-    ],
+    });
+  }
+
+  function refreshBooks() {
+    currentPage = 1;
+    hasMoreBooks = true;
+    isFetching = false;
+    $("#bbody").empty();
+    fetchBooks();
+  }
+
+  $("#bookTableContainer").on("scroll", function () {
+    const container = this;
+    const distanceFromBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
+
+    if (distanceFromBottom < 80) {
+      fetchBooks();
+    }
   });
 
-  // 3. Create Book (Submit)
+  $("#addBookBtn").on("click", function () {
+    $("#bookId").remove();
+    $("#bform").trigger("reset");
+    resetImageQueue();
+    $("#bookUpdate").hide();
+    $("#bookSubmit").show();
+    $("#bookModal").modal("show");
+  });
+
+  $("#img").on("change", function () {
+    const files = Array.from(this.files || []);
+
+    files.forEach((file) => {
+      const reader = new FileReader();
+      const imageId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+      reader.onload = function (event) {
+        selectedImages.push({
+          id: imageId,
+          file,
+          previewUrl: event.target.result,
+        });
+        renderImagePreviews();
+      };
+
+      reader.readAsDataURL(file);
+    });
+
+    $(this).val("");
+  });
+
+  $(document).on("change", ".main-cover-radio", function () {
+    selectedMainCover = $(this).val();
+    renderImagePreviews();
+  });
+
+  $(document).on("click", ".remove-existing-image", function () {
+    const imageId = $(this).data("id");
+    const imagePath = $(this).data("path");
+
+    if (imageId && !deletedImageIds.includes(Number(imageId))) {
+      deletedImageIds.push(Number(imageId));
+    }
+
+    existingImages = existingImages.filter((image) => {
+      if (imageId) {
+        return String(image.id) !== String(imageId);
+      }
+
+      return image.path !== imagePath;
+    });
+
+    if (
+      selectedMainCover === `existing:${imageId}` ||
+      selectedMainCover === `existing-path:${imagePath}`
+    ) {
+      selectedMainCover = null;
+    }
+
+    renderImagePreviews();
+  });
+
+  $(document).on("click", ".remove-new-image", function () {
+    const imageId = $(this).data("id");
+    selectedImages = selectedImages.filter((image) => image.id !== imageId);
+
+    if (selectedMainCover === `new:${imageId}`) {
+      selectedMainCover = null;
+    }
+
+    renderImagePreviews();
+  });
+
   $("#bookSubmit").on("click", function (e) {
     e.preventDefault();
-    let formData = new FormData($("#bform")[0]);
 
     $.ajax({
       method: "POST",
       url: `${url}/api/v1/books`,
-      data: formData,
+      data: buildBookFormData(),
       contentType: false,
       processData: false,
       success: function () {
         $("#bookModal").modal("hide");
-        $("#btable").DataTable().ajax.reload();
+        refreshBooks();
         Swal.fire({
           icon: "success",
           title: "Added!",
@@ -111,12 +365,11 @@ $(document).ready(function () {
     });
   });
 
-  // 4. Edit Book (Get Data and Show Modal)
   $("#btable tbody").on("click", ".editBtn", function (e) {
     e.preventDefault();
-    $("#bookImagePreview").remove();
     $("#bookId").remove();
     $("#bform").trigger("reset");
+    resetImageQueue();
 
     const id = $(this).data("id");
     $("#bookModal").modal("show");
@@ -139,38 +392,31 @@ $(document).ready(function () {
         $("#isbn").val(book.isbn);
         $("#qty").val(book.Stock ? book.Stock.quantity : 0);
 
-        if (book.img_path) {
-          let images = [];
-
-          try {
-            images = JSON.parse(book.img_path);
-          } catch (error) {
-            images = [book.img_path];
-          }
-
-          $("#bform").append(
-            `<div id="bookImagePreview" class="mt-3"><img src="${url}/${images[0]}" width="100" class="rounded border"/></div>`,
-          );
-        }
+        existingImages = getBookImageRecords(book);
+        const mainImage = Array.isArray(book.BookImages)
+          ? book.BookImages.find((image) => image.is_main)
+          : null;
+        selectedMainCover = mainImage
+          ? `existing:${mainImage.book_image_id}`
+          : null;
+        renderImagePreviews();
       },
     });
   });
 
-  // 5. Update Book
   $("#bookUpdate").on("click", function (e) {
     e.preventDefault();
     const id = $("#bookId").val();
-    let formData = new FormData($("#bform")[0]);
 
     $.ajax({
       method: "PUT",
       url: `${url}/api/v1/books/${id}`,
-      data: formData,
+      data: buildBookFormData(),
       contentType: false,
       processData: false,
       success: function () {
         $("#bookModal").modal("hide");
-        $("#btable").DataTable().ajax.reload();
+        refreshBooks();
         Swal.fire({
           icon: "success",
           title: "Updated!",
@@ -178,10 +424,15 @@ $(document).ready(function () {
           timer: 1500,
         });
       },
+      error: function (error) {
+        Swal.fire({
+          icon: "error",
+          text: error.responseJSON?.error || "Error updating book",
+        });
+      },
     });
   });
 
-  // 6. Delete Book
   $("#btable tbody").on("click", ".deleteBtn", function (e) {
     e.preventDefault();
     const id = $(this).data("id");
@@ -190,19 +441,27 @@ $(document).ready(function () {
     bootbox.confirm(
       "Are you sure you want to delete this book?",
       function (result) {
-        if (result) {
-          $.ajax({
-            method: "DELETE",
-            url: `${url}/api/v1/books/${id}`,
-            success: function () {
-              $row.fadeOut(500, function () {
-                $("#btable").DataTable().row($row).remove().draw();
-              });
-              Swal.fire({ icon: "success", text: "Book deleted", timer: 1500 });
-            },
-          });
-        }
+        if (!result) return;
+
+        $.ajax({
+          method: "DELETE",
+          url: `${url}/api/v1/books/${id}`,
+          success: function () {
+            $row.fadeOut(300, function () {
+              $(this).remove();
+            });
+            Swal.fire({ icon: "success", text: "Book deleted", timer: 1500 });
+          },
+          error: function (error) {
+            Swal.fire({
+              icon: "error",
+              text: error.responseJSON?.error || "Error deleting book",
+            });
+          },
+        });
       },
     );
   });
+
+  refreshBooks();
 });

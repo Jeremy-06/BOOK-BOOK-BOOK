@@ -5,6 +5,11 @@ const Stock = db.Stock;
 const Customer = db.Customer;
 const sequelize = db.sequelize;
 
+const parsePositiveInt = (value, fallback) => {
+    const parsed = parseInt(value, 10);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+};
+
 const createOrder = async (req, res) => {
     console.log('createOrder controller entered');
     let t;
@@ -96,7 +101,9 @@ const createOrder = async (req, res) => {
 
 const getAllOrders = async (req, res) => {
     try {
-        const orders = await Order.findAll({
+        const page = parsePositiveInt(req.query.page, 1);
+        const limit = parsePositiveInt(req.query.limit, 0);
+        const queryOptions = {
             include: [
                 { model: db.User, attributes: ['id', 'first_name', 'last_name', 'email'] },
                 { 
@@ -104,9 +111,24 @@ const getAllOrders = async (req, res) => {
                     include: [{ model: db.Book, attributes: ['title', 'price'] }] 
                 }
             ],
-            order: [['date_placed', 'DESC']] // Pinakabago sa itaas
+            order: [['date_placed', 'DESC']],
+            distinct: true
+        };
+
+        if (limit > 0) {
+            queryOptions.limit = limit;
+            queryOptions.offset = (page - 1) * limit;
+        }
+
+        const result = await Order.findAndCountAll(queryOptions);
+
+        return res.status(200).json({
+            rows: result.rows,
+            count: result.count,
+            page,
+            limit: limit || result.count,
+            hasMore: limit > 0 ? page * limit < result.count : false,
         });
-        return res.status(200).json({ rows: orders });
     } catch (error) {
         console.log(error);
         return res.status(500).json({ error: error.message });

@@ -9,7 +9,16 @@ $(document).ready(function () {
 
   if (token && userRole === "admin") {
     $("#nav-links").prepend(
-      '<li class="nav-item"><a class="nav-link text-warning fw-bold" href="admin/books.html"><i class="fas fa-cogs me-1"></i>Admin Dashboard</a></li><li class="nav-item"><a class="nav-link text-warning fw-bold" href="admin/orders.html"><i class="fas fa-shopping-cart me-1"></i>Order Management</a></li>',
+      `<li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle text-warning fw-bold" href="#" id="adminPanelDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="fas fa-cogs me-1"></i>Admin Panel
+        </a>
+        <ul class="dropdown-menu" aria-labelledby="adminPanelDropdown">
+          <li><a class="dropdown-item" href="admin/books.html">Manage Books</a></li>
+          <li><a class="dropdown-item" href="admin/orders.html">Manage Orders</a></li>
+          <li><a class="dropdown-item" href="admin/users.html">Manage Users</a></li>
+        </ul>
+      </li>`,
     );
     $("#loginLink")
       .closest(".nav-item")
@@ -151,6 +160,27 @@ $(document).ready(function () {
     }
   }
 
+  function getImageSrc(imagePath, fallbackSrc) {
+    if (!imagePath) {
+      return fallbackSrc;
+    }
+
+    return /^https?:\/\//i.test(imagePath) ? imagePath : `${url}/${imagePath}`;
+  }
+
+  function getMainCoverPath(book) {
+    if (Array.isArray(book.BookImages) && book.BookImages.length > 0) {
+      return book.BookImages[0].image_path || book.BookImages[0].url || "";
+    }
+
+    const images = parseImages(book.img_path);
+    return images.length > 0 ? images[0] : "";
+  }
+
+  function getMainCoverSrc(book, fallbackSrc) {
+    return getImageSrc(getMainCoverPath(book), fallbackSrc);
+  }
+
   function addToCart(bookId) {
     const book = allBooks.find(
       (item) => String(item.book_id) === String(bookId),
@@ -170,11 +200,10 @@ $(document).ready(function () {
     const existingItem = cart.find(
       (item) => String(item.id) === String(book.book_id),
     );
-    const images = parseImages(book.img_path);
-    const imageSrc =
-      images.length > 0
-        ? `${url}/${images[0]}`
-        : "https://via.placeholder.com/600x800?text=No+Image";
+    const imageSrc = getMainCoverSrc(
+      book,
+      "https://via.placeholder.com/600x800?text=No+Image",
+    );
 
     if (existingItem) {
       if (existingItem.quantity >= stockQty) {
@@ -220,11 +249,10 @@ $(document).ready(function () {
     let html = "";
 
     filteredBooks.forEach((book) => {
-      const images = parseImages(book.img_path);
-      const imageSrc =
-        images.length > 0
-          ? `${url}/${images[0]}`
-          : "https://via.placeholder.com/600x800?text=No+Image";
+      const imageSrc = getMainCoverSrc(
+        book,
+        "https://via.placeholder.com/600x800?text=No+Image",
+      );
       const stockQty = book.Stock ? book.Stock.quantity : 0;
       const stockBadge =
         stockQty > 0

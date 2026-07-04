@@ -1,16 +1,26 @@
 const sequelize = require('../config/database');
 const Book = require('./book');
 const Stock = require('./stock');
+const BookImage = require('./bookimage');
 
 const db = {};
 db.Book = Book(sequelize, require('sequelize').DataTypes);
 db.Stock = Stock(sequelize, require('sequelize').DataTypes);
+db.BookImage = BookImage(sequelize, require('sequelize').DataTypes);
 
 db.Book.hasOne(db.Stock, {
     foreignKey: 'book_id',
     onDelete: 'CASCADE'
 });
 db.Stock.belongsTo(db.Book, {
+    foreignKey: 'book_id'
+});
+
+db.Book.hasMany(db.BookImage, {
+    foreignKey: 'book_id',
+    onDelete: 'CASCADE'
+});
+db.BookImage.belongsTo(db.Book, {
     foreignKey: 'book_id'
 });
 

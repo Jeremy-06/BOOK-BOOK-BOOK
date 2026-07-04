@@ -7,6 +7,11 @@ const jwt = require("jsonwebtoken");
 const getFullName = (user) =>
   `${user.first_name || ""} ${user.last_name || ""}`.trim();
 
+const parsePositiveInt = (value, fallback) => {
+  const parsed = parseInt(value, 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+};
+
 const registerUser = async (req, res) => {
   try {
     const { first_name, last_name, password, email } = req.body;
@@ -308,8 +313,27 @@ const getUserProfile = async (req, res) => {
 
 const getAllUsers = async (req, res) => {
   try {
-    const users = await User.findAll({ attributes: { exclude: ["password"] } });
-    return res.status(200).json({ rows: users });
+    const page = parsePositiveInt(req.query.page, 1);
+    const limit = parsePositiveInt(req.query.limit, 0);
+    const queryOptions = {
+      attributes: { exclude: ["password"] },
+      order: [["id", "DESC"]],
+    };
+
+    if (limit > 0) {
+      queryOptions.limit = limit;
+      queryOptions.offset = (page - 1) * limit;
+    }
+
+    const result = await User.findAndCountAll(queryOptions);
+
+    return res.status(200).json({
+      rows: result.rows,
+      count: result.count,
+      page,
+      limit: limit || result.count,
+      hasMore: limit > 0 ? page * limit < result.count : false,
+    });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
