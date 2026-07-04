@@ -6,6 +6,8 @@ $(document).ready(function () {
   let hasMoreBooks = true;
   let currentSortBy = "id";
   let currentSortOrder = "DESC";
+  let searchQuery = "";
+  let searchDebounceTimer = null;
   let selectedImages = [];
   let existingImages = [];
   let deletedImageIds = [];
@@ -249,7 +251,7 @@ $(document).ready(function () {
 
     $.ajax({
       method: "GET",
-      url: `${url}/api/v1/books?page=${currentPage}&limit=${limit}&sortBy=${currentSortBy}&sortOrder=${currentSortOrder}`,
+      url: `${url}/api/v1/books?page=${currentPage}&limit=${limit}&sortBy=${currentSortBy}&sortOrder=${currentSortOrder}&search=${encodeURIComponent(searchQuery)}`,
       dataType: "json",
       success: function (data) {
         const books = data.rows || [];
@@ -306,6 +308,15 @@ $(document).ready(function () {
     isFetching = false;
     $("#bbody").empty();
     fetchBooks();
+  });
+
+  $(".admin-search").on("input", function () {
+    clearTimeout(searchDebounceTimer);
+    searchQuery = $(this).val().trim();
+
+    searchDebounceTimer = setTimeout(function () {
+      refreshBooks();
+    }, 300);
   });
 
   $("#addBookBtn").on("click", function () {

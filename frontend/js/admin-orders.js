@@ -6,6 +6,8 @@ $(document).ready(function () {
   let hasMoreOrders = true;
   let currentSortBy = "id";
   let currentSortOrder = "DESC";
+  let searchQuery = "";
+  let searchDebounceTimer = null;
   let allOrders = [];
 
   const rawToken = sessionStorage.getItem("token");
@@ -88,7 +90,7 @@ $(document).ready(function () {
 
     $.ajax({
       method: "GET",
-      url: `${url}/api/v1/orders?page=${currentPage}&limit=${limit}&sortBy=${currentSortBy}&sortOrder=${currentSortOrder}`,
+      url: `${url}/api/v1/orders?page=${currentPage}&limit=${limit}&sortBy=${currentSortBy}&sortOrder=${currentSortOrder}&search=${encodeURIComponent(searchQuery)}`,
       dataType: "json",
       headers: { Authorization: "Bearer " + token },
       success: function (data) {
@@ -149,6 +151,15 @@ $(document).ready(function () {
     allOrders = [];
     $("#ordersTable tbody").empty();
     fetchOrders();
+  });
+
+  $(".admin-search").on("input", function () {
+    clearTimeout(searchDebounceTimer);
+    searchQuery = $(this).val().trim();
+
+    searchDebounceTimer = setTimeout(function () {
+      refreshOrders();
+    }, 300);
   });
 
   $("#ordersTable tbody").on("click", ".viewOrderBtn", function () {

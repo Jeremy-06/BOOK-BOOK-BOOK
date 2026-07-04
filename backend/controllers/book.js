@@ -150,6 +150,7 @@ exports.getAllBooks = async (req, res) => {
     const limit = parsePositiveInt(req.query.limit, 0);
     const sortBy = getBookSortColumn(req.query.sortBy || "id");
     const sortOrder = getSortOrder(req.query.sortOrder || "DESC");
+    const search = String(req.query.search || "").trim();
     const queryOptions = {
       include: [
         { model: Stock },
@@ -162,6 +163,16 @@ exports.getAllBooks = async (req, res) => {
       order: [[sortBy, sortOrder]],
       distinct: true,
     };
+
+    if (search) {
+      queryOptions.where = {
+        [Op.or]: [
+          { title: { [Op.substring]: search } },
+          { author: { [Op.substring]: search } },
+          { isbn: { [Op.substring]: search } },
+        ],
+      };
+    }
 
     if (limit > 0) {
       queryOptions.limit = limit;

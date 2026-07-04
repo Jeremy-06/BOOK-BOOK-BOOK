@@ -6,6 +6,8 @@ $(document).ready(function () {
   let hasMoreUsers = true;
   let currentSortBy = "id";
   let currentSortOrder = "DESC";
+  let searchQuery = "";
+  let searchDebounceTimer = null;
 
   const rawToken = sessionStorage.getItem("token");
   const token = rawToken ? rawToken.replace(/"/g, "") : null;
@@ -71,7 +73,7 @@ $(document).ready(function () {
 
     $.ajax({
       method: "GET",
-      url: `${url}/api/v1/users?page=${currentPage}&limit=${limit}&sortBy=${currentSortBy}&sortOrder=${currentSortOrder}`,
+      url: `${url}/api/v1/users?page=${currentPage}&limit=${limit}&sortBy=${currentSortBy}&sortOrder=${currentSortOrder}&search=${encodeURIComponent(searchQuery)}`,
       dataType: "json",
       success: function (data) {
         const users = data.rows || [];
@@ -128,6 +130,15 @@ $(document).ready(function () {
     isFetching = false;
     $("#usersTable tbody").empty();
     fetchUsers();
+  });
+
+  $(".admin-search").on("input", function () {
+    clearTimeout(searchDebounceTimer);
+    searchQuery = $(this).val().trim();
+
+    searchDebounceTimer = setTimeout(function () {
+      refreshUsers();
+    }, 300);
   });
 
   $("#usersTable tbody").on("click", ".editRoleBtn", function () {

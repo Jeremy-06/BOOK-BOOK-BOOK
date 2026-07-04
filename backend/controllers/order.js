@@ -1,4 +1,5 @@
 const db = require('../models');
+const { Op } = require('sequelize');
 const Order = db.Order;
 const OrderLine = db.OrderLine;
 const Stock = db.Stock;
@@ -121,6 +122,7 @@ const getAllOrders = async (req, res) => {
         const limit = parsePositiveInt(req.query.limit, 0);
         const sortBy = getOrderSortColumn(req.query.sortBy || 'id');
         const sortOrder = getSortOrder(req.query.sortOrder || 'DESC');
+        const search = String(req.query.search || '').trim();
         const queryOptions = {
             include: [
                 { model: db.User, attributes: ['id', 'first_name', 'last_name', 'email'] },
@@ -132,6 +134,20 @@ const getAllOrders = async (req, res) => {
             order: [[sortBy, sortOrder]],
             distinct: true
         };
+
+        if (search) {
+            const filters = [
+                { status: { [Op.substring]: search } },
+                { payment_method: { [Op.substring]: search } }
+            ];
+
+            const searchId = parseInt(search.replace(/^#/, ''), 10);
+            if (Number.isInteger(searchId)) {
+                filters.push({ id: searchId });
+            }
+
+            queryOptions.where = { [Op.or]: filters };
+        }
 
         if (limit > 0) {
             queryOptions.limit = limit;
@@ -184,4 +200,76 @@ const updateOrderStatus = async (req, res) => {
     }
 };
 
-module.exports = { createOrder, getAllOrders, myOrders, updateOrderStatus };
+const cancelOrder = async (req, res) => {
+    let t;
+
+    try {
+        const { id } = req.params;
+        const userId = req.user && req.user.id;
+
+        if (!userId) {
+            return res.status(401).json({ error: 'Login first to access this resource' });
+        }
+
+        t = await sequelize.transaction();
+
+        const order = await Order.findOne({
+            where: { id, user_id: userId },
+            include: [{ model: OrderLine }],
+            transaction: t,
+            lock: t.LOCK.UPDATE
+        });
+
+        if (!order) {
+            await t.rollback();
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
+        const currentStatus = String(order.status || '').trim();
+        const terminalStatuses = ['Shipped', 'Delivered', 'Cancelled'];
+        const cancellableStatuses = ['Pending', 'Processing'];
+
+        if (terminalStatuses.includes(currentStatus)) {
+            await t.rollback();
+            return res.status(400).json({
+                error: `Order cannot be cancelled because it is already ${currentStatus}.`
+            });
+        }
+
+        if (!cancellableStatuses.includes(currentStatus)) {
+            await t.rollback();
+            return res.status(400).json({ error: 'Only pending orders can be cancelled.' });
+        }
+
+        const orderLines = order.OrderLines || [];
+
+        for (const item of orderLines) {
+            const [stock] = await Stock.findOrCreate({
+                where: { book_id: item.book_id },
+                defaults: { quantity: 0 },
+                transaction: t,
+                lock: t.LOCK.UPDATE
+            });
+
+            await stock.increment('quantity', {
+                by: item.quantity,
+                transaction: t
+            });
+        }
+
+        await order.update({ status: 'Cancelled' }, { transaction: t });
+        await t.commit();
+
+        return res.status(200).json({
+            success: true,
+            message: 'Order cancelled successfully'
+        });
+    } catch (error) {
+        if (t) {
+            await t.rollback();
+        }
+        return res.status(500).json({ error: error.message });
+    }
+};
+
+module.exports = { createOrder, getAllOrders, myOrders, updateOrderStatus, cancelOrder };

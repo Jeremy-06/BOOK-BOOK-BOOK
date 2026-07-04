@@ -14,6 +14,7 @@ $(document).ready(function () {
 
   const authHeaders = { Authorization: "Bearer " + token };
   let allOrders = [];
+  let orderIdToCancel = null;
 
   function parsePrice(price) {
     const value = Number(price);
@@ -108,11 +109,16 @@ $(document).ready(function () {
 
   function getStatusBadge(status) {
     let badgeClass = "bg-secondary";
+    if (status === "Pending") badgeClass = "bg-warning text-dark";
     if (status === "Processing") badgeClass = "bg-primary";
     if (status === "Shipped") badgeClass = "bg-info";
     if (status === "Delivered") badgeClass = "bg-success";
     if (status === "Cancelled") badgeClass = "bg-danger";
     return `<span class="badge ${badgeClass}">${status || "Processing"}</span>`;
+  }
+
+  function canCancelOrder(status) {
+    return ["Pending", "Processing"].includes(status);
   }
 
   function renderOrders(orders) {
@@ -129,6 +135,14 @@ $(document).ready(function () {
 
     const html = orders
       .map((order) => {
+        const cancelButton = canCancelOrder(order.status)
+          ? `
+              <button class="btn btn-sm btn-danger cancelOrderBtn ms-1" data-id="${order.id}">
+                <i class="fas fa-times me-1"></i>Cancel
+              </button>
+            `
+          : "";
+
         return `
           <tr>
             <td><strong>#${order.id}</strong></td>
@@ -139,6 +153,7 @@ $(document).ready(function () {
               <button class="btn btn-sm btn-outline-dark viewOrderBtn" data-id="${order.id}">
                 <i class="fas fa-eye me-1"></i>View Details
               </button>
+              ${cancelButton}
             </td>
           </tr>
         `;
@@ -306,6 +321,52 @@ $(document).ready(function () {
       document.getElementById("orderDetailsModal"),
     );
     modal.show();
+  });
+
+  $(document).on("click", ".cancelOrderBtn", function () {
+    orderIdToCancel = $(this).data("id");
+    const modal = bootstrap.Modal.getOrCreateInstance(
+      document.getElementById("cancelOrderModal"),
+    );
+    modal.show();
+  });
+
+  $("#confirmCancelOrderBtn").on("click", function () {
+    if (!orderIdToCancel) return;
+
+    const $button = $(this);
+    $button.prop("disabled", true).text("Cancelling...");
+
+    $.ajax({
+      method: "PUT",
+      url: `${url}/api/v1/orders/${orderIdToCancel}/cancel`,
+      dataType: "json",
+      headers: authHeaders,
+      success: function (data) {
+        const modal = bootstrap.Modal.getOrCreateInstance(
+          document.getElementById("cancelOrderModal"),
+        );
+        modal.hide();
+        orderIdToCancel = null;
+
+        Swal.fire({
+          icon: "success",
+          text: data.message || "Order cancelled successfully",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+        loadOrders();
+      },
+      error: function (error) {
+        Swal.fire({
+          icon: "error",
+          text: error.responseJSON?.error || "Unable to cancel order.",
+        });
+      },
+      complete: function () {
+        $button.prop("disabled", false).text("Yes, cancel order");
+      },
+    });
   });
 
   $(document).on("click", "#logoutBtn", function (e) {

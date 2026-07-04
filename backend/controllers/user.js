@@ -1,6 +1,7 @@
 const db = require("../models");
 const User = db.User;
 const Customer = db.Customer;
+const { Op } = require("sequelize");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
@@ -335,10 +336,21 @@ const getAllUsers = async (req, res) => {
     const limit = parsePositiveInt(req.query.limit, 0);
     const sortBy = getUserSortColumn(req.query.sortBy || "id");
     const sortOrder = getSortOrder(req.query.sortOrder || "DESC");
+    const search = String(req.query.search || "").trim();
     const queryOptions = {
       attributes: { exclude: ["password"] },
       order: [[sortBy, sortOrder]],
     };
+
+    if (search) {
+      queryOptions.where = {
+        [Op.or]: [
+          { first_name: { [Op.substring]: search } },
+          { last_name: { [Op.substring]: search } },
+          { email: { [Op.substring]: search } },
+        ],
+      };
+    }
 
     if (limit > 0) {
       queryOptions.limit = limit;
