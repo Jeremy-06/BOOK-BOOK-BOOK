@@ -1,5 +1,8 @@
+const path = require("path");
 const db = require("../models");
 const { Op } = require("sequelize");
+const { sendEmail } = require("../utils/sendEmail");
+const generatePDF = require("../utils/generatePDF");
 const Order = db.Order;
 const OrderLine = db.OrderLine;
 const Stock = db.Stock;
@@ -107,6 +110,62 @@ const createOrder = async (req, res) => {
     await t.commit();
     console.log("createOrder after transaction commit");
 
+    const completedOrder = await Order.findOne({
+      where: { id: order.id },
+      include: [
+        {
+          model: db.User,
+          attributes: ["id", "first_name", "last_name", "email"],
+          include: [{ model: Customer, attributes: ["address", "phone"] }],
+        },
+        {
+          model: OrderLine,
+          include: [{ model: db.Book, attributes: ["title", "price"] }],
+        },
+      ],
+    });
+
+    try {
+      const pdfBuffer = await generatePDF(completedOrder);
+      const pathToLogo = path.join(__dirname, "..", "images", "logo.jpg");
+      const html = `
+        <div style="font-family: Arial, Helvetica, sans-serif; background: #f3f4f6; padding: 24px;">
+          <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.08);">
+            <div style="background: linear-gradient(135deg, #111827, #4f46e5); padding: 28px 24px; text-align: center;">
+              <img src="cid:shoplogo" alt="BOOK BOOK BOOK" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; display: block; margin: 0 auto;" />
+              <h1 style="margin: 12px 0 6px; color: #ffffff; font-size: 26px; font-weight: 700;">BOOK BOOK BOOK</h1>
+              <p style="margin: 0; color: #e5e7eb; font-size: 14px;">Thank you for your order</p>
+            </div>
+            <div style="padding: 28px 24px 16px; text-align: center; color: #374151;">
+              <p style="margin: 0 0 10px; font-size: 16px;">Hello ${completedOrder.User.first_name || "Customer"},</p>
+              <p style="margin: 0 0 14px; font-size: 15px; line-height: 1.6;">Your order has been confirmed and your official receipt is attached below.</p>
+              <div style="display: inline-block; background: #4f46e5; color: #ffffff; padding: 12px 18px; border-radius: 999px; font-weight: 700; margin: 8px 0 16px;">Order #${completedOrder.id}</div>
+              <div style="background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 14px 16px; margin: 16px 0 20px; color: #4338ca; font-weight: 600;">
+                ⬇️ Please download your official PDF receipt attached at the bottom of this email.
+              </div>
+              <p style="margin: 0; font-size: 13px; color: #6b7280;">Direct attachment download links are blocked by many email clients for security reasons, so the PDF is attached for you to open directly.</p>
+            </div>
+            <div style="padding: 0 24px 24px; text-align: center; color: #9ca3af; font-size: 13px;">BOOK BOOK BOOK • Premium reading experience</div>
+          </div>
+        </div>
+      `;
+
+      await sendEmail({
+        to: completedOrder.User.email,
+        subject: `Order Confirmation - Order #${completedOrder.id}`,
+        html,
+        attachments: [
+          {
+            filename: `Order-${completedOrder.id}-Receipt.pdf`,
+            content: pdfBuffer,
+          },
+          { filename: "logo.jpg", path: pathToLogo, cid: "shoplogo" },
+        ],
+      });
+    } catch (emailError) {
+      console.error("Receipt email failed", emailError);
+    }
+
     return res.status(201).json({
       success: true,
       order_id: order.id,
@@ -115,7 +174,7 @@ const createOrder = async (req, res) => {
     });
   } catch (error) {
     console.log("createOrder catch block", error);
-    if (t) {
+    if (t && !t.finished) {
       await t.rollback();
     }
     return res
@@ -208,6 +267,58 @@ const updateOrderStatus = async (req, res) => {
     const { status } = req.body;
 
     await Order.update({ status }, { where: { id } });
+
+    const fullOrder = await Order.findByPk(id, {
+      include: [
+        {
+          model: db.User,
+          include: [{ model: Customer }],
+        },
+        {
+          model: OrderLine,
+          include: [{ model: db.Book }],
+        },
+      ],
+    });
+
+    try {
+      const pdfBuffer = await generatePDF(fullOrder);
+      const pathToLogo = path.join(__dirname, "..", "images", "logo.jpg");
+      const html = `
+        <div style="font-family: Arial, Helvetica, sans-serif; background: #f3f4f6; padding: 24px;">
+          <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.08);">
+            <div style="background: linear-gradient(135deg, #111827, #4f46e5); padding: 28px 24px; text-align: center;">
+              <img src="cid:shoplogo" alt="BOOK BOOK BOOK" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; display: block; margin: 0 auto;" />
+              <h1 style="margin: 12px 0 6px; color: #ffffff; font-size: 26px; font-weight: 700;">BOOK BOOK BOOK</h1>
+              <p style="margin: 0; color: #e5e7eb; font-size: 14px;">Order update</p>
+            </div>
+            <div style="padding: 28px 24px 16px; text-align: center; color: #374151;">
+              <p style="margin: 0 0 10px; font-size: 16px;">Hello ${fullOrder.User.first_name || "Customer"},</p>
+              <p style="margin: 0 0 14px; font-size: 15px; line-height: 1.6;">Your order status has been updated to <strong>${status}</strong>.</p>
+              <div style="display: inline-block; background: #4f46e5; color: #ffffff; padding: 12px 18px; border-radius: 999px; font-weight: 700; margin: 8px 0 16px;">Order #${fullOrder.id}</div>
+              <div style="background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 14px 16px; margin: 16px 0 20px; color: #4338ca; font-weight: 600;">
+                ⬇ Please download your official PDF receipt attached at the bottom of this email.
+              </div>
+              <p style="margin: 0; font-size: 13px; color: #6b7280;">Direct attachment download links are blocked by many email clients for security reasons, so the PDF is attached for you to open directly.</p>
+            </div>
+            <div style="padding: 0 24px 24px; text-align: center; color: #9ca3af; font-size: 13px;">BOOK BOOK BOOK • Premium reading experience</div>
+          </div>
+        </div>
+      `;
+
+      await sendEmail({
+        to: fullOrder.User.email,
+        subject: `Order Update - #${fullOrder.id}`,
+        html,
+        attachments: [
+          { filename: `Order-${fullOrder.id}-Receipt.pdf`, content: pdfBuffer },
+          { filename: "logo.jpg", path: pathToLogo, cid: "shoplogo" },
+        ],
+      });
+    } catch (emailError) {
+      console.error("Status email failed", emailError);
+    }
+
     return res
       .status(200)
       .json({ success: true, message: "Order status updated successfully" });

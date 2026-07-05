@@ -217,8 +217,10 @@ $(document).ready(function () {
   });
 
   $("#saveStatusBtn").on("click", function () {
-    const orderId = $(this).data("id");
+    const thisBtn = $(this);
+    const orderId = thisBtn.data("id");
     const newStatus = $("#updateStatusSelect").val();
+    const originalHtml = thisBtn.html();
 
     $.ajax({
       method: "PUT",
@@ -226,6 +228,12 @@ $(document).ready(function () {
       data: JSON.stringify({ status: newStatus }),
       contentType: "application/json",
       headers: { Authorization: "Bearer " + token },
+      beforeSend: function () {
+        thisBtn.prop("disabled", true);
+        thisBtn.html(
+          '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Updating...',
+        );
+      },
       success: function () {
         $("#orderModal").modal("hide");
         refreshOrders();
@@ -237,6 +245,10 @@ $(document).ready(function () {
       },
       error: function () {
         Swal.fire({ icon: "error", text: "Failed to update status" });
+      },
+      complete: function () {
+        thisBtn.prop("disabled", false);
+        thisBtn.html(originalHtml);
       },
     });
   });
