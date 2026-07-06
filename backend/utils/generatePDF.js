@@ -80,14 +80,12 @@ const generatePDF = (order) => {
         const total = unitPrice * qty;
         subtotal += total;
         doc.moveDown(0.25);
-        doc
-          .font("Helvetica")
-          .text(book.title || "Unknown Book", 40, doc.y, {
-            width: 270,
-            align: "left",
-          });
+        doc.font("Helvetica").text(book.title || "Unknown Book", 40, doc.y, {
+          width: 270,
+          align: "left",
+        });
         doc.text(String(qty), 335, doc.y);
-        doc.text(`$${total.toFixed(2)}`, 445, doc.y);
+        doc.text(`PHP${total.toFixed(2)}`, 445, doc.y);
       });
 
       doc.moveDown(1);
@@ -99,7 +97,7 @@ const generatePDF = (order) => {
       doc
         .fontSize(13)
         .font("Helvetica-Bold")
-        .text(`Total Price: $${total.toFixed(2)}`, 400, doc.y + 8);
+        .text(`Total Price: PHP${total.toFixed(2)}`, 400, doc.y + 8);
       doc.moveDown(1.2);
       doc
         .fontSize(10)
