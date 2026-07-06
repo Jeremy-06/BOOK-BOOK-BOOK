@@ -51,6 +51,18 @@ $(document).ready(function () {
     return `${user.first_name || ""} ${user.last_name || ""}`.trim();
   }
 
+  // Avatar URL
+  function getAvatarUrl(user) {
+    const name =
+      user.name ||
+      getFullName(user) ||
+      `${sessionFirstName} ${sessionLastName}`.trim() ||
+      "User";
+    return user.avatar
+      ? user.avatar
+      : `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
+  }
+
   // Validate field
   function validateRequiredField($field) {
     if (!$field.val().trim()) {
@@ -100,6 +112,7 @@ $(document).ready(function () {
     $("#profilePhone").text(displayValue(phone));
     $("#profileZipcode").text(displayValue(zipCode));
     $("#profileAddress").text(displayValue(address));
+    $("#profileAvatar").attr("src", getAvatarUrl(user));
 
     $("#editFirstName").val(firstName);
     $("#editLastName").val(lastName);
@@ -195,6 +208,13 @@ $(document).ready(function () {
           `${sessionFirstName} ${sessionLastName}`.trim() || "-",
         );
         $("#profileEmail").text(sessionEmail);
+        $("#profileAvatar").attr(
+          "src",
+          getAvatarUrl({
+            first_name: sessionFirstName,
+            last_name: sessionLastName,
+          }),
+        );
         Swal.fire({
           icon: "warning",
           text: "Profile details could not be loaded. Showing your account info instead.",

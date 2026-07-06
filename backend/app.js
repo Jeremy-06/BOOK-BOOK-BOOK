@@ -17,4 +17,7 @@ app.use("/api/v1/users", users);
 const orders = require("./routes/order");
 app.use("/api/v1/orders", orders);
 
+const admin = require("./routes/admin");
+app.use("/api/v1/admin", admin);
+
 module.exports = app;

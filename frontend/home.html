@@ -257,7 +257,17 @@
                   class="form-control form-control-lg"
                   placeholder="Search books or authors"
                 />
-                <div id="autocomplete-results" class="list-group position-absolute w-100 shadow-sm" style="display: none; z-index: 1050; max-height: 300px; overflow-y: auto; top: 100%;"></div>
+                <div
+                  id="autocomplete-results"
+                  class="list-group position-absolute w-100 shadow-sm"
+                  style="
+                    display: none;
+                    z-index: 1050;
+                    max-height: 300px;
+                    overflow-y: auto;
+                    top: 100%;
+                  "
+                ></div>
               </div>
             </div>
           </div>
@@ -410,7 +420,7 @@
             <button type="button" class="btn btn-dark btn-lg" id="checkoutBtn">
               <i class="fas fa-check-circle me-2"></i>Checkout
             </button>
-            
+
             <button
               type="button"
               class="btn btn-outline-danger"
@@ -465,12 +475,41 @@
               Cancel
             </button>
             <button type="button" class="btn btn-dark" id="confirmPaymentBtn">
-              <i class="fas fa-credit-card me-2"></i>Confirm Payment & Place Order
+              <i class="fas fa-credit-card me-2"></i>Confirm Payment & Place
+              Order
             </button>
           </div>
         </div>
       </div>
     </div>
+
+    <footer class="bg-dark text-light py-5 mt-5">
+      <div class="container">
+        <div class="mx-auto text-center" style="max-width: 640px">
+          <img
+            src="../backend/images/logo.jpg"
+            alt="BOOK BOOK BOOK logo"
+            class="mb-3"
+            style="
+              width: 50px;
+              height: 50px;
+              border-radius: 50%;
+              object-fit: cover;
+            "
+          />
+          <h2 class="h4 fw-bold mb-3">BOOK BOOK BOOK</h2>
+          <p class="text-secondary mb-0">
+            A welcoming bookstore for curious readers, thoughtful gifts, and
+            stories worth keeping.
+          </p>
+        </div>
+
+        <hr class="text-secondary my-4" />
+        <p class="text-center text-secondary mb-0">
+          &copy; 2026 BOOK BOOK BOOK. All rights reserved.
+        </p>
+      </div>
+    </footer>
 
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

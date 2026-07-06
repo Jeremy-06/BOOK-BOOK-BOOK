@@ -26,6 +26,10 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.STRING(50),
             defaultValue: 'user'
         },
+        avatar: {
+            type: DataTypes.STRING,
+            allowNull: true
+        },
         deleted_at: {
             type: DataTypes.DATE,
             allowNull: true

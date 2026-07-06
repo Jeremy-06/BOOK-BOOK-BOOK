@@ -8,15 +8,10 @@ $(document).ready(function () {
 
   if (token && userRole === "admin") {
     $("#nav-links").prepend(
-      `<li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle text-warning fw-bold" href="#" id="adminPanelDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+      `<li class="nav-item">
+        <a class="nav-link text-warning fw-bold" href="admin/dashboard.html">
           <i class="fas fa-cogs me-1"></i>Admin Panel
         </a>
-        <ul class="dropdown-menu" aria-labelledby="adminPanelDropdown">
-          <li><a class="dropdown-item" href="admin/books.html">Manage Books</a></li>
-          <li><a class="dropdown-item" href="admin/orders.html">Manage Orders</a></li>
-          <li><a class="dropdown-item" href="admin/users.html">Manage Users</a></li>
-        </ul>
       </li>`,
     );
     $("#loginLink")
