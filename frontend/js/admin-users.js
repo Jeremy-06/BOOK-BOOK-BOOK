@@ -1,13 +1,5 @@
 $(document).ready(function () {
   const url = `http://${window.location.hostname}:3000`;
-  const limit = 25;
-  let currentPage = 1;
-  let isFetching = false;
-  let hasMoreUsers = true;
-  let currentSortBy = "id";
-  let currentSortOrder = "DESC";
-  let searchQuery = "";
-  let searchDebounceTimer = null;
 
   const rawToken = sessionStorage.getItem("token");
   const token = rawToken ? rawToken.replace(/"/g, "") : null;
@@ -20,6 +12,8 @@ $(document).ready(function () {
     );
     return;
   }
+
+  const authHeaders = { Authorization: `Bearer ${token}` };
 
   const reactivateModalElement = document.getElementById("reactivateModal");
   const reactivateModal = bootstrap.Modal.getOrCreateInstance(
@@ -41,113 +35,84 @@ $(document).ready(function () {
     );
   }
 
-  // Render row
-  function renderUserRow(user) {
-    const roleBadge =
-      user.role === "admin"
-        ? '<span class="badge bg-danger">Admin</span>'
-        : '<span class="badge bg-primary">User</span>';
-    const statusBadge =
-      user.deleted_at === null
-        ? '<span class="badge bg-success">Active</span>'
-        : '<span class="badge bg-secondary">Deactivated</span>';
-    const actionButton =
+  // Role badge
+  function renderRoleBadge(role) {
+    return role === "admin"
+      ? '<span class="badge bg-danger">Admin</span>'
+      : '<span class="badge bg-primary">User</span>';
+  }
+
+  // Status badge
+  function renderStatusBadge(deletedAt) {
+    return deletedAt === null
+      ? '<span class="badge bg-success">Active</span>'
+      : '<span class="badge bg-secondary">Deactivated</span>';
+  }
+
+  // Action buttons
+  function renderActions(user) {
+    const roleBtn = `<button class="btn btn-sm btn-outline-primary editRoleBtn" data-id="${user.id}" data-role="${escapeHtml(user.role)}"><i class="fas fa-user-edit"></i> Role</button>`;
+    const statusBtn =
       user.deleted_at === null
         ? `<button class="btn btn-sm btn-outline-danger deactivateBtn" data-email="${escapeHtml(user.email)}"><i class="fas fa-ban"></i> Deactivate</button>`
         : `<button class="btn btn-sm btn-outline-success reactivateBtn" data-email="${escapeHtml(user.email)}"><i class="fas fa-redo-alt"></i> Reactivate</button>`;
 
-    return `
-      <tr data-id="${user.id}">
-        <td>${user.id}</td>
-        <td>${escapeHtml(getFullName(user))}</td>
-        <td>${escapeHtml(user.email)}</td>
-        <td>${roleBadge}</td>
-        <td>${statusBadge}</td>
-        <td>
-          <button class="btn btn-sm btn-outline-primary editRoleBtn" data-id="${user.id}" data-role="${escapeHtml(user.role)}"><i class="fas fa-user-edit"></i> Role</button>
-          ${actionButton}
-        </td>
-      </tr>
-    `;
+    return `${roleBtn} ${statusBtn}`;
   }
 
-  // Fetch users
-  function fetchUsers() {
-    if (isFetching || !hasMoreUsers) return;
-
-    isFetching = true;
-
-    $.ajax({
-      method: "GET",
-      url: `${url}/api/v1/users?page=${currentPage}&limit=${limit}&sortBy=${currentSortBy}&sortOrder=${currentSortOrder}&search=${encodeURIComponent(searchQuery)}`,
-      dataType: "json",
-      success: function (data) {
-        const users = data.rows || [];
-
-        if (currentPage === 1 && users.length === 0) {
-          $("#usersTable tbody").html(
-            '<tr><td colspan="6" class="text-center text-muted py-4">No users found.</td></tr>',
-          );
-        } else {
-          $("#usersTable tbody").append(users.map(renderUserRow).join(""));
-        }
-
-        hasMoreUsers = Boolean(data.hasMore);
-        currentPage += 1;
-      },
+  // Init table
+  const usersTable = $("#usersTable").DataTable({
+    serverSide: true,
+    processing: true,
+    searching: true,
+    order: [[0, "desc"]],
+    ajax: {
+      url: `${url}/api/v1/users`,
+      headers: authHeaders,
+      dataSrc: "data",
       error: function () {
         Swal.fire({ icon: "error", text: "Unable to load users." });
       },
-      complete: function () {
-        isFetching = false;
+    },
+    columns: [
+      { data: "id", name: "id" },
+      {
+        data: null,
+        name: "first_name",
+        render: function (user) {
+          return escapeHtml(getFullName(user));
+        },
       },
-    });
-  }
-
-  // Refresh users
-  function refreshUsers() {
-    currentPage = 1;
-    hasMoreUsers = true;
-    isFetching = false;
-    $("#usersTable tbody").empty();
-    fetchUsers();
-  }
-
-  $(".custom-table-scroll").on("scroll", function () {
-    // Check scroll bottom
-    if (
-      Math.ceil($(this).scrollTop() + $(this).innerHeight()) >=
-      $(this)[0].scrollHeight - 5
-    ) {
-      fetchUsers();
-    }
-  });
-
-  $("#usersTable").on("click", "th.sortable", function () {
-    const sortBy = $(this).data("sort");
-
-    if (currentSortBy === sortBy) {
-      currentSortOrder = currentSortOrder === "ASC" ? "DESC" : "ASC";
-    } else {
-      currentSortBy = sortBy;
-      currentSortOrder = "ASC";
-    }
-
-    currentPage = 1;
-    hasMoreUsers = true;
-    isFetching = false;
-    $("#usersTable tbody").empty();
-    fetchUsers();
-  });
-
-  $(".admin-search").on("input", function () {
-    clearTimeout(searchDebounceTimer);
-    searchQuery = $(this).val().trim();
-
-    // Debounce search
-    searchDebounceTimer = setTimeout(function () {
-      refreshUsers();
-    }, 300);
+      {
+        data: "email",
+        name: "email",
+        render: function (email) {
+          return escapeHtml(email);
+        },
+      },
+      {
+        data: "role",
+        name: "role",
+        render: function (role) {
+          return renderRoleBadge(role);
+        },
+      },
+      {
+        data: "deleted_at",
+        name: "deleted_at",
+        render: function (deletedAt) {
+          return renderStatusBadge(deletedAt);
+        },
+      },
+      {
+        data: null,
+        orderable: false,
+        searchable: false,
+        render: function (user) {
+          return renderActions(user);
+        },
+      },
+    ],
   });
 
   $("#usersTable tbody").on("click", ".editRoleBtn", function () {
@@ -166,11 +131,12 @@ $(document).ready(function () {
     $.ajax({
       method: "PUT",
       url: `${url}/api/v1/users/${id}/role`,
+      headers: authHeaders,
       data: JSON.stringify({ role }),
       contentType: "application/json",
       success: function () {
         $("#roleModal").modal("hide");
-        refreshUsers();
+        usersTable.ajax.reload(null, false);
         Swal.fire({
           icon: "success",
           text: "Role updated successfully",
@@ -197,10 +163,11 @@ $(document).ready(function () {
         $.ajax({
           method: "DELETE",
           url: `${url}/api/v1/users/deactivate`,
+          headers: authHeaders,
           data: JSON.stringify({ email }),
           contentType: "application/json",
           success: function () {
-            refreshUsers();
+            usersTable.ajax.reload(null, false);
             Swal.fire({
               icon: "success",
               text: "User deactivated",
@@ -232,11 +199,12 @@ $(document).ready(function () {
     $.ajax({
       method: "PUT",
       url: `${url}/api/v1/users/reactivate`,
+      headers: authHeaders,
       data: JSON.stringify({ email }),
       contentType: "application/json",
       success: function () {
         reactivateModal.hide();
-        refreshUsers();
+        usersTable.ajax.reload(null, false);
         Swal.fire({
           icon: "success",
           text: "User reactivated",
@@ -252,6 +220,4 @@ $(document).ready(function () {
       },
     });
   });
-
-  refreshUsers();
 });

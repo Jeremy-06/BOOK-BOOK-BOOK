@@ -15,6 +15,12 @@ const parsePositiveInt = (value, fallback) => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 };
 
+// Parse offset
+const parseNonNegativeInt = (value, fallback) => {
+  const parsed = parseInt(value, 10);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : fallback;
+};
+
 // Sort order
 const getSortOrder = (value) =>
   String(value || "DESC").toUpperCase() === "ASC" ? "ASC" : "DESC";
@@ -377,42 +383,50 @@ const getUserProfile = async (req, res) => {
   }
 };
 
-// List users
+// List users (DataTables)
 const getAllUsers = async (req, res) => {
   try {
-    const page = parsePositiveInt(req.query.page, 1);
-    const limit = parsePositiveInt(req.query.limit, 0);
-    const sortBy = getUserSortColumn(req.query.sortBy || "id");
-    const sortOrder = getSortOrder(req.query.sortOrder || "DESC");
-    const search = String(req.query.search || "").trim();
+    const draw = parsePositiveInt(req.query.draw, 1);
+    const start = parseNonNegativeInt(req.query.start, 0);
+    const length = parsePositiveInt(req.query.length, 25);
+    const searchValue = String(req.query.search?.value || "").trim();
+
+    // Column order map
+    const orderColumns = ["id", "first_name", "email", "role", "deleted_at"];
+    const orderColumnIndex = parseNonNegativeInt(
+      req.query.order?.[0]?.column,
+      0,
+    );
+    const sortBy = getUserSortColumn(
+      orderColumns[orderColumnIndex] || "id",
+    );
+    const sortOrder = getSortOrder(req.query.order?.[0]?.dir);
+
     const queryOptions = {
       attributes: { exclude: ["password"] },
       order: [[sortBy, sortOrder]],
+      offset: start,
+      limit: length,
     };
 
-    if (search) {
+    if (searchValue) {
       queryOptions.where = {
         [Op.or]: [
-          { first_name: { [Op.substring]: search } },
-          { last_name: { [Op.substring]: search } },
-          { email: { [Op.substring]: search } },
+          { first_name: { [Op.iLike]: `%${searchValue}%` } },
+          { last_name: { [Op.iLike]: `%${searchValue}%` } },
+          { email: { [Op.iLike]: `%${searchValue}%` } },
         ],
       };
     }
 
-    if (limit > 0) {
-      queryOptions.limit = limit;
-      queryOptions.offset = (page - 1) * limit;
-    }
-
+    const recordsTotal = await User.count();
     const result = await User.findAndCountAll(queryOptions);
 
     return res.status(200).json({
-      rows: result.rows,
-      count: result.count,
-      page,
-      limit: limit || result.count,
-      hasMore: limit > 0 ? page * limit < result.count : false,
+      draw,
+      recordsTotal,
+      recordsFiltered: result.count,
+      data: result.rows,
     });
   } catch (error) {
     return res.status(500).json({ error: error.message });
