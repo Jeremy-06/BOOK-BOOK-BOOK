@@ -389,7 +389,12 @@ const getAllUsers = async (req, res) => {
     const draw = parsePositiveInt(req.query.draw, 1);
     const start = parseNonNegativeInt(req.query.start, 0);
     const length = parsePositiveInt(req.query.length, 25);
-    const searchValue = String(req.query.search?.value || "").trim();
+
+    // Extract search value
+    const searchValue =
+      (req.query.search && req.query.search.value) ||
+      req.query["search[value]"] ||
+      "";
 
     // Column order map
     const orderColumns = ["id", "first_name", "email", "role", "deleted_at"];
@@ -402,22 +407,25 @@ const getAllUsers = async (req, res) => {
     );
     const sortOrder = getSortOrder(req.query.order?.[0]?.dir);
 
+    // Build where clause
+    let whereClause = {};
+    if (searchValue) {
+      whereClause = {
+        [Op.or]: [
+          { first_name: { [Op.like]: `%${searchValue}%` } },
+          { last_name: { [Op.like]: `%${searchValue}%` } },
+          { email: { [Op.like]: `%${searchValue}%` } },
+        ],
+      };
+    }
+
     const queryOptions = {
       attributes: { exclude: ["password"] },
+      where: whereClause,
       order: [[sortBy, sortOrder]],
       offset: start,
       limit: length,
     };
-
-    if (searchValue) {
-      queryOptions.where = {
-        [Op.or]: [
-          { first_name: { [Op.iLike]: `%${searchValue}%` } },
-          { last_name: { [Op.iLike]: `%${searchValue}%` } },
-          { email: { [Op.iLike]: `%${searchValue}%` } },
-        ],
-      };
-    }
 
     const recordsTotal = await User.count();
     const result = await User.findAndCountAll(queryOptions);

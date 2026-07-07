@@ -180,9 +180,10 @@ exports.getAllBooks = async (req, res) => {
     const draw = parseNonNegativeInt(req.query.draw, 0);
     const start = parseNonNegativeInt(req.query.start, 0);
     const length = parsePositiveInt(req.query.length, 10);
-    const searchValue = req.query.search
-      ? String(req.query.search.value || "").trim()
-      : "";
+    const searchValue =
+      req.query.search && req.query.search.value
+        ? req.query.search.value
+        : req.query["search[value]"] || "";
     const orderEntry =
       req.query.order && req.query.order[0] ? req.query.order[0] : null;
     const sortBy = getDataTablesSortColumn(
@@ -192,7 +193,19 @@ exports.getAllBooks = async (req, res) => {
 
     const recordsTotal = await Book.count();
 
+    let whereClause = {};
+    if (searchValue) {
+      whereClause = {
+        [Op.or]: [
+          { title: { [Op.like]: `%${searchValue}%` } },
+          { author: { [Op.like]: `%${searchValue}%` } },
+          { isbn: { [Op.like]: `%${searchValue}%` } },
+        ],
+      };
+    }
+
     const queryOptions = {
+      where: whereClause,
       include: [
         { model: Stock },
         {
@@ -211,16 +224,6 @@ exports.getAllBooks = async (req, res) => {
       offset: start,
       limit: length,
     };
-
-    if (searchValue) {
-      queryOptions.where = {
-        [Op.or]: [
-          { title: { [Op.substring]: searchValue } },
-          { author: { [Op.substring]: searchValue } },
-          { isbn: { [Op.substring]: searchValue } },
-        ],
-      };
-    }
 
     const result = await Book.findAndCountAll(queryOptions);
 
