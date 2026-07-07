@@ -8,6 +8,7 @@ const {
   updateUser,
   getProfile,
   updateProfile,
+  uploadAvatar,
   deactivateUser,
   reactivateUser,
   getUserProfile,
@@ -26,6 +27,13 @@ router.post("/update-profile", upload.single("image"), updateUser);
 router.get("/profile", isAuthenticatedUser, getProfile);
 // Update profile
 router.put("/profile", isAuthenticatedUser, updateProfile);
+// Upload avatar
+router.post(
+  "/avatar",
+  isAuthenticatedUser,
+  upload.single("avatar"),
+  uploadAvatar,
+);
 // Deactivate user
 router.delete("/deactivate", deactivateUser);
 // Reactivate user

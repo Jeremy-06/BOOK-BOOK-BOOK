@@ -58,9 +58,14 @@ $(document).ready(function () {
       getFullName(user) ||
       `${sessionFirstName} ${sessionLastName}`.trim() ||
       "User";
-    return user.avatar
+
+    if (!user.avatar) {
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
+    }
+
+    return /^https?:\/\//i.test(user.avatar)
       ? user.avatar
-      : `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
+      : `${url}/${user.avatar}`;
   }
 
   // Validate field
@@ -413,6 +418,75 @@ $(document).ready(function () {
       },
       complete: function () {
         $button.prop("disabled", false).text("Yes, cancel order");
+      },
+    });
+  });
+
+  $("#avatarInput").on("change", function (e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];
+    if (!allowedTypes.includes(file.type)) {
+      Swal.fire({
+        icon: "error",
+        text: "Only JPG and PNG images are allowed.",
+      });
+      $(this).val("");
+      return;
+    }
+
+    const maxSizeBytes = 5 * 1024 * 1024;
+    if (file.size > maxSizeBytes) {
+      Swal.fire({
+        icon: "error",
+        text: "Image is too large. Please choose a file under 5MB.",
+      });
+      $(this).val("");
+      return;
+    }
+
+    const previousSrc = $("#profileAvatar").attr("src");
+    const reader = new FileReader();
+    reader.onload = function (event) {
+      $("#profileAvatar").attr("src", event.target.result);
+    };
+    reader.readAsDataURL(file);
+
+    const formData = new FormData();
+    formData.append("avatar", file);
+
+    $.ajax({
+      method: "POST",
+      url: `${url}/api/v1/users/avatar`,
+      data: formData,
+      processData: false,
+      contentType: false,
+      headers: authHeaders,
+      success: function (data) {
+        if (data.user) {
+          updateProfileDisplay(data.user);
+        }
+        Swal.fire({
+          icon: "success",
+          text: data.message || "Profile picture updated successfully",
+          showConfirmButton: false,
+          timer: 1500,
+          timerProgressBar: true,
+        });
+      },
+      error: function (error) {
+        $("#profileAvatar").attr("src", previousSrc);
+        Swal.fire({
+          icon: "error",
+          text:
+            error.responseJSON && error.responseJSON.error
+              ? error.responseJSON.error
+              : "Unable to update profile picture.",
+        });
+      },
+      complete: function () {
+        $("#avatarInput").val("");
       },
     });
   });

@@ -12,6 +12,10 @@
       href="https://use.fontawesome.com/releases/v5.0.6/css/all.css"
       rel="stylesheet"
     />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.16.1/sweetalert2.css"
+    />
     <style>
       :root {
         --bg: #f3f0ea;
@@ -103,13 +107,36 @@
     <main class="container py-5 profile-shell">
       <div class="hero-card p-4 p-lg-5 mb-4">
         <div class="d-flex flex-column flex-md-row gap-4 align-items-md-center">
-          <img
-            id="profileAvatar"
-            src="https://ui-avatars.com/api/?name=User&background=random"
-            class="avatar"
-            alt="Profile avatar"
-            onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=User&background=random';"
-          />
+          <div class="position-relative" style="width: 120px; height: 120px">
+            <img
+              id="profileAvatar"
+              src="https://ui-avatars.com/api/?name=User&background=random"
+              class="avatar"
+              alt="Profile avatar"
+              onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=User&background=random';"
+            />
+            <label
+              for="avatarInput"
+              class="btn btn-light rounded-circle position-absolute d-flex align-items-center justify-content-center shadow-sm"
+              style="
+                bottom: 0;
+                right: 0;
+                width: 38px;
+                height: 38px;
+                padding: 0;
+                cursor: pointer;
+              "
+              title="Change profile picture"
+            >
+              <i class="fas fa-camera text-dark"></i>
+            </label>
+            <input
+              type="file"
+              id="avatarInput"
+              accept="image/png, image/jpeg, image/jpg"
+              class="d-none"
+            />
+          </div>
           <div>
             <p class="mb-1 text-uppercase small opacity-75">Logged in user</p>
             <h1 class="mb-2" id="profileName">Loading...</h1>

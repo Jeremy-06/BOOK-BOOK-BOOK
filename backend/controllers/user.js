@@ -262,6 +262,41 @@ const updateProfile = async (req, res) => {
   }
 };
 
+// Upload avatar
+const uploadAvatar = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No image file uploaded" });
+    }
+
+    const user = await User.findByPk(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const avatarPath = req.file.path.replace(/\\/g, "/");
+
+    await user.update({ avatar: avatarPath });
+
+    const updatedUser = await User.findByPk(req.user.id, {
+      attributes: { exclude: ["password", "token"] },
+      include: [{ model: Customer }],
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile picture updated successfully",
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(500)
+      .json({ error: "Error uploading profile picture", details: error.message });
+  }
+};
+
 // Deactivate user
 const deactivateUser = async (req, res) => {
   try {
@@ -405,6 +440,7 @@ module.exports = {
   updateUser,
   getProfile,
   updateProfile,
+  uploadAvatar,
   deactivateUser,
   reactivateUser,
   getUserProfile,
