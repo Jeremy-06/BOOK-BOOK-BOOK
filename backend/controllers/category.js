@@ -13,6 +13,17 @@ exports.getAllCategories = async (req, res) => {
       (req.query.search && req.query.search.value) ||
       req.query["search[value]"] ||
       "";
+    const orderColumnRaw =
+      req.query["order[0][column]"] ||
+      (req.query.order && req.query.order[0] ? req.query.order[0].column : "0");
+    const sortColumnIndex = parseInt(orderColumnRaw, 10);
+
+    const orderDirRaw =
+      req.query["order[0][dir]"] ||
+      (req.query.order && req.query.order[0] ? req.query.order[0].dir : "DESC");
+    const sortDirection = orderDirRaw.toUpperCase();
+    const categoryColumns = ["id", "name", "description", "id"];
+    const sortColumn = categoryColumns[sortColumnIndex] || "id";
 
     const whereClause = searchValue
       ? {
@@ -29,7 +40,7 @@ exports.getAllCategories = async (req, res) => {
       where: whereClause,
       offset: start,
       limit: length,
-      order: [["name", "ASC"]],
+      order: [[sortColumn, sortDirection]],
     });
 
     return res.status(200).json({

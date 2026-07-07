@@ -17,40 +17,6 @@ function parseNonNegativeInt(value, fallback) {
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
-// Sort order
-function getSortOrder(value) {
-  return String(value || "DESC").toUpperCase() === "ASC" ? "ASC" : "DESC";
-}
-
-// Sort books
-function getBookSortColumn(value) {
-  const sortColumns = {
-    id: "book_id",
-    book_id: "book_id",
-    title: "title",
-    author: "author",
-    price: "price",
-    isbn: "isbn",
-    created_at: "created_at",
-    updated_at: "updated_at",
-  };
-
-  return sortColumns[value] || sortColumns.id;
-}
-
-// DataTables column map
-function getDataTablesSortColumn(columnIndex) {
-  const columnMap = {
-    0: "book_id",
-    2: "title",
-    3: "author",
-    4: "price",
-    5: "isbn",
-  };
-
-  return columnMap[columnIndex] || "book_id";
-}
-
 // Parse images
 function parseStoredImages(value) {
   if (!value) return [];
@@ -187,12 +153,27 @@ exports.getAllBooks = async (req, res) => {
       req.query.search && req.query.search.value
         ? req.query.search.value
         : req.query["search[value]"] || "";
-    const orderEntry =
-      req.query.order && req.query.order[0] ? req.query.order[0] : null;
-    const sortBy = orderEntry
-      ? getDataTablesSortColumn(parseInt(orderEntry.column, 10))
-      : getBookSortColumn(req.query.sortBy);
-    const sortOrder = getSortOrder(orderEntry ? orderEntry.dir : req.query.sortOrder);
+    const orderColumnRaw =
+      req.query["order[0][column]"] ||
+      (req.query.order && req.query.order[0] ? req.query.order[0].column : "0");
+    const sortColumnIndex = parseInt(orderColumnRaw, 10);
+
+    const orderDirRaw =
+      req.query["order[0][dir]"] ||
+      (req.query.order && req.query.order[0] ? req.query.order[0].dir : "DESC");
+    const sortDirection = orderDirRaw.toUpperCase();
+    const bookColumns = [
+      "book_id",
+      "book_id",
+      "title",
+      "author",
+      "price",
+      "isbn",
+      "category_id",
+      "book_id",
+      "book_id",
+    ];
+    const sortColumn = bookColumns[sortColumnIndex] || "book_id";
 
     let whereClause = {};
     if (searchValue) {
@@ -220,7 +201,7 @@ exports.getAllBooks = async (req, res) => {
           required: false,
         },
       ],
-      order: [[sortBy, sortOrder]],
+      order: [[sortColumn, sortDirection]],
       distinct: true,
       offset,
       limit,
