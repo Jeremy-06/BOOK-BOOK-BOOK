@@ -1,7 +1,5 @@
 $(document).ready(function () {
   const url = `http://${window.location.hostname}:3000`;
-  let categories = [];
-  let searchQuery = "";
 
   const rawToken = sessionStorage.getItem("token");
   const token = rawToken ? rawToken.replace(/"/g, "") : null;
@@ -51,54 +49,42 @@ $(document).ready(function () {
     $form.find(".required-field").removeClass("is-invalid is-valid");
   }
 
-  function renderCategoryRows() {
-    const filteredCategories = categories.filter((category) => {
-      const haystack =
-        `${category.name || ""} ${category.description || ""}`.toLowerCase();
-      return haystack.includes(searchQuery.toLowerCase());
-    });
-
-    if (filteredCategories.length === 0) {
-      $("#categoriesBody").html(
-        '<tr><td colspan="4" class="text-center text-muted py-4">No categories found.</td></tr>',
-      );
-      return;
-    }
-
-    $("#categoriesBody").html(
-      filteredCategories
-        .map(
-          (category) => `
-            <tr data-id="${category.id}">
-              <td>${category.id}</td>
-              <td>${escapeHtml(category.name)}</td>
-              <td>${category.description ? escapeHtml(category.description) : '<span class="text-muted">-</span>'}</td>
-              <td>
-                <button class="btn btn-sm btn-outline-primary editBtn" data-id="${category.id}"><i class="fas fa-edit"></i></button>
-                <button class="btn btn-sm btn-outline-danger deleteBtn" data-id="${category.id}"><i class="fas fa-trash-alt"></i></button>
-              </td>
-            </tr>
-          `,
-        )
-        .join(""),
-    );
-  }
-
-  function refreshCategories() {
-    $.ajax({
-      method: "GET",
+  const categoriesTable = $("#categoriesTable").DataTable({
+    serverSide: true,
+    processing: true,
+    ajax: {
       url: `${url}/api/v1/categories`,
-      dataType: "json",
       headers: { Authorization: "Bearer " + token },
-      success: function (data) {
-        categories = data.rows || [];
-        renderCategoryRows();
+    },
+    columns: [
+      { data: "id" },
+      {
+        data: "name",
+        render: function (data) {
+          return escapeHtml(data);
+        },
       },
-      error: function () {
-        Swal.fire({ icon: "error", text: "Unable to load categories." });
+      {
+        data: "description",
+        render: function (data) {
+          return data
+            ? escapeHtml(data)
+            : '<span class="text-muted">-</span>';
+        },
       },
-    });
-  }
+      {
+        data: null,
+        orderable: false,
+        searchable: false,
+        render: function (data, type, row) {
+          return `
+            <button class="btn btn-sm btn-outline-primary editBtn" data-id="${row.id}"><i class="fas fa-edit"></i></button>
+            <button class="btn btn-sm btn-outline-danger deleteBtn" data-id="${row.id}"><i class="fas fa-trash-alt"></i></button>
+          `;
+        },
+      },
+    ],
+  });
 
   $("#addCategoryBtn").on("click", function () {
     $("#categoryId").val("");
@@ -149,7 +135,7 @@ $(document).ready(function () {
         url: `${url}/api/v1/categories/${id}`,
         headers: { Authorization: "Bearer " + token },
         success: function () {
-          refreshCategories();
+          categoriesTable.ajax.reload(null, false);
           Swal.fire({
             icon: "success",
             text: "Category deleted successfully",
@@ -197,7 +183,7 @@ $(document).ready(function () {
       headers: { Authorization: "Bearer " + token },
       success: function () {
         categoryModal.hide();
-        refreshCategories();
+        categoriesTable.ajax.reload(null, false);
         Swal.fire({
           icon: "success",
           title: isUpdate ? "Updated!" : "Added!",
@@ -217,11 +203,4 @@ $(document).ready(function () {
       },
     });
   });
-
-  $(".admin-search").on("input", function () {
-    searchQuery = $(this).val().trim();
-    renderCategoryRows();
-  });
-
-  refreshCategories();
 });
