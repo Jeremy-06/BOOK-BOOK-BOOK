@@ -177,21 +177,22 @@ async function ensureLegacyBookImages(book, existingImagePaths, transaction) {
 // Fetch books
 exports.getAllBooks = async (req, res) => {
   try {
-    const draw = parseNonNegativeInt(req.query.draw, 0);
-    const start = parseNonNegativeInt(req.query.start, 0);
-    const length = parsePositiveInt(req.query.length, 10);
+    const limit = parseInt(req.query.length || req.query.limit || 12, 10);
+    const offset = req.query.start
+      ? parseInt(req.query.start, 10)
+      : req.query.page
+        ? (parseInt(req.query.page, 10) - 1) * limit
+        : 0;
     const searchValue =
       req.query.search && req.query.search.value
         ? req.query.search.value
         : req.query["search[value]"] || "";
     const orderEntry =
       req.query.order && req.query.order[0] ? req.query.order[0] : null;
-    const sortBy = getDataTablesSortColumn(
-      orderEntry ? parseInt(orderEntry.column, 10) : 0,
-    );
-    const sortOrder = getSortOrder(orderEntry ? orderEntry.dir : "desc");
-
-    const recordsTotal = await Book.count();
+    const sortBy = orderEntry
+      ? getDataTablesSortColumn(parseInt(orderEntry.column, 10))
+      : getBookSortColumn(req.query.sortBy);
+    const sortOrder = getSortOrder(orderEntry ? orderEntry.dir : req.query.sortOrder);
 
     let whereClause = {};
     if (searchValue) {
@@ -221,17 +222,19 @@ exports.getAllBooks = async (req, res) => {
       ],
       order: [[sortBy, sortOrder]],
       distinct: true,
-      offset: start,
-      limit: length,
+      offset,
+      limit,
     };
 
-    const result = await Book.findAndCountAll(queryOptions);
+    const { count, rows } = await Book.findAndCountAll(queryOptions);
 
     return res.status(200).json({
-      draw: parseInt(draw, 10),
-      recordsTotal,
-      recordsFiltered: result.count,
-      data: result.rows,
+      draw: req.query.draw || 0,
+      recordsTotal: count,
+      recordsFiltered: count,
+      data: rows,
+      rows,
+      hasMore: offset + rows.length < count,
     });
   } catch (error) {
     console.log(error);

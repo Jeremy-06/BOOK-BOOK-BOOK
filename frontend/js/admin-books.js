@@ -96,11 +96,11 @@ $(document).ready(function () {
   function fetchCategories() {
     $.ajax({
       method: "GET",
-      url: `${url}/api/v1/categories`,
+      url: `${url}/api/v1/categories?length=100&start=0`,
       dataType: "json",
       headers: { Authorization: "Bearer " + token },
       success: function (data) {
-        categories = data.rows || [];
+        categories = data.data || data.rows || [];
         renderCategoryOptions(selectedCategoryId);
       },
       error: function () {

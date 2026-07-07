@@ -34,6 +34,9 @@ $(document).ready(function () {
   let allBooks = [];
   let checkoutCart = [];
   let checkoutSelectedItems = [];
+  let currentPage = 1;
+  let isFetching = false;
+  let hasMoreBooks = true;
 
   // Get cart
   function getCart() {
@@ -335,29 +338,29 @@ $(document).ready(function () {
     });
   }
 
-  // Render books
-  function renderBooks(books) {
+  // Filter books
+  function getFilteredBooks(books) {
     const query = $("#searchBox").val().trim().toLowerCase();
-    const filteredBooks = books.filter((book) => {
+    return books.filter((book) => {
       const searchableText =
         `${book.title || ""} ${book.author || ""} ${book.isbn || ""}`.toLowerCase();
       return searchableText.includes(query);
     });
+  }
 
-    let html = "";
+  // Build card
+  function buildBookCardHtml(book) {
+    const imageSrc = getMainCoverSrc(
+      book,
+      "https://via.placeholder.com/600x800?text=No+Image",
+    );
+    const stockQty = book.Stock ? book.Stock.quantity : 0;
+    const stockBadge =
+      stockQty > 0
+        ? `<span class="badge badge-soft rounded-pill px-3 py-2">In Stock ${stockQty}</span>`
+        : '<span class="badge bg-danger rounded-pill px-3 py-2">Out of Stock</span>';
 
-    filteredBooks.forEach((book) => {
-      const imageSrc = getMainCoverSrc(
-        book,
-        "https://via.placeholder.com/600x800?text=No+Image",
-      );
-      const stockQty = book.Stock ? book.Stock.quantity : 0;
-      const stockBadge =
-        stockQty > 0
-          ? `<span class="badge badge-soft rounded-pill px-3 py-2">In Stock ${stockQty}</span>`
-          : '<span class="badge bg-danger rounded-pill px-3 py-2">Out of Stock</span>';
-
-      html += `
+    return `
                 <div class="col-sm-6 col-lg-4 col-xl-3">
                     <div class="card book-card">
                         <img src="${imageSrc}" class="card-img-top book-cover" alt="${book.title || "Book cover"}">
@@ -382,10 +385,24 @@ $(document).ready(function () {
                     </div>
                 </div>
             `;
-    });
+  }
+
+  // Render books
+  function renderBooks(books) {
+    const filteredBooks = getFilteredBooks(books);
+    const html = filteredBooks.map(buildBookCardHtml).join("");
 
     $("#book-catalog").html(html);
     $("#emptyState").toggleClass("d-none", filteredBooks.length > 0);
+  }
+
+  // Append books
+  function appendBooks(newBooks) {
+    const filteredBooks = getFilteredBooks(newBooks);
+    const html = filteredBooks.map(buildBookCardHtml).join("");
+
+    $("#book-catalog").append(html);
+    $("#emptyState").toggleClass("d-none", allBooks.length > 0);
   }
 
   // Parse images
@@ -447,21 +464,43 @@ $(document).ready(function () {
     modal.show();
   }
 
-  $.ajax({
-    method: "GET",
-    url: `${url}/api/v1/books`,
-    dataType: "json",
-    success: function (data) {
-      allBooks = data.rows || [];
-      renderBooks(allBooks);
-    },
-    error: function (error) {
-      console.log("Error loading books:", error);
-      $("#book-catalog").html(
-        '<div class="col-12"><div class="empty-state text-center"><h3 class="h5 mb-2">Unable to load books</h3><p class="text-muted mb-0">Please try again later.</p></div></div>',
-      );
-    },
-  });
+  // Fetch books
+  function fetchBooks() {
+    isFetching = true;
+
+    $.ajax({
+      method: "GET",
+      url: `${url}/api/v1/books`,
+      data: { page: currentPage, limit: 12 },
+      dataType: "json",
+      success: function (response) {
+        const books = response.rows || response.data || [];
+
+        if (currentPage === 1) {
+          allBooks = books;
+          renderBooks(allBooks);
+        } else {
+          allBooks = allBooks.concat(books);
+          appendBooks(books);
+        }
+
+        hasMoreBooks = response.hasMore;
+        isFetching = false;
+      },
+      error: function (error) {
+        console.log("Error loading books:", error);
+        isFetching = false;
+
+        if (currentPage === 1) {
+          $("#book-catalog").html(
+            '<div class="col-12"><div class="empty-state text-center"><h3 class="h5 mb-2">Unable to load books</h3><p class="text-muted mb-0">Please try again later.</p></div></div>',
+          );
+        }
+      },
+    });
+  }
+
+  fetchBooks();
 
   $("#searchBox").on("input", function () {
     const searchValue = $(this).val().trim();
@@ -701,15 +740,9 @@ $(document).ready(function () {
             if (cartCanvas) cartCanvas.hide();
           }
 
-          $.ajax({
-            method: "GET",
-            url: `${url}/api/v1/books`,
-            dataType: "json",
-            success: function (bookData) {
-              allBooks = bookData.rows || [];
-              renderBooks(allBooks);
-            },
-          });
+          currentPage = 1;
+          hasMoreBooks = true;
+          fetchBooks();
         });
       },
       error: function (error) {
@@ -753,6 +786,16 @@ $(document).ready(function () {
     if (item) {
       item.isSelected = isChecked;
       saveCart(cart);
+    }
+  });
+
+  // Infinite scroll
+  $(window).on("scroll", function () {
+    if ($(window).scrollTop() + $(window).height() >= $(document).height() - 100) {
+      if (!isFetching && hasMoreBooks) {
+        currentPage++;
+        fetchBooks();
+      }
     }
   });
 

@@ -21,26 +21,6 @@ const parseNonNegativeInt = (value, fallback) => {
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : fallback;
 };
 
-// Sort order
-const getSortOrder = (value) =>
-  String(value || "DESC").toUpperCase() === "ASC" ? "ASC" : "DESC";
-
-// Sort users
-const getUserSortColumn = (value) => {
-  const sortColumns = {
-    id: "id",
-    first_name: "first_name",
-    last_name: "last_name",
-    email: "email",
-    role: "role",
-    deleted_at: "deleted_at",
-    created_at: "created_at",
-    updated_at: "updated_at",
-  };
-
-  return sortColumns[value] || sortColumns.id;
-};
-
 // Register user
 const registerUser = async (req, res) => {
   try {
@@ -390,24 +370,26 @@ const getAllUsers = async (req, res) => {
     const start = parseNonNegativeInt(req.query.start, 0);
     const length = parsePositiveInt(req.query.length, 25);
 
-    // Extract search value
     const searchValue =
       (req.query.search && req.query.search.value) ||
       req.query["search[value]"] ||
       "";
 
-    // Column order map
-    const orderColumns = ["id", "first_name", "email", "role", "deleted_at"];
-    const orderColumnIndex = parseNonNegativeInt(
-      req.query.order?.[0]?.column,
-      0,
-    );
-    const sortBy = getUserSortColumn(
-      orderColumns[orderColumnIndex] || "id",
-    );
-    const sortOrder = getSortOrder(req.query.order?.[0]?.dir);
+    const sortDirection =
+      req.query.order && req.query.order[0] && req.query.order[0].dir
+        ? req.query.order[0].dir.toUpperCase()
+        : (req.query["order[0][dir]"] || "DESC").toUpperCase();
 
-    // Build where clause
+    const rawColumnIndex =
+      req.query.order && req.query.order[0] && req.query.order[0].column
+        ? req.query.order[0].column
+        : req.query["order[0][column]"];
+    const sortColumnIndex = parseNonNegativeInt(rawColumnIndex, 0);
+
+    const sortableColumns = ["id", "first_name", "email", "role", "deleted_at"];
+    const sortColumn = sortableColumns[sortColumnIndex] || "id";
+    const sortOrder = sortDirection === "ASC" ? "ASC" : "DESC";
+
     let whereClause = {};
     if (searchValue) {
       whereClause = {
@@ -422,7 +404,7 @@ const getAllUsers = async (req, res) => {
     const queryOptions = {
       attributes: { exclude: ["password"] },
       where: whereClause,
-      order: [[sortBy, sortOrder]],
+      order: [[sortColumn, sortOrder]],
       offset: start,
       limit: length,
     };
