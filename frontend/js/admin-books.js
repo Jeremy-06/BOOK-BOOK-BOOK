@@ -12,6 +12,8 @@ $(document).ready(function () {
   let existingImages = [];
   let deletedImageIds = [];
   let selectedMainCover = null;
+  let categories = [];
+  let selectedCategoryId = "";
 
   const rawToken = sessionStorage.getItem("token");
   const token = rawToken ? rawToken.replace(/"/g, "") : null;
@@ -76,6 +78,43 @@ $(document).ready(function () {
   // Get images
   function getBookImages(book) {
     return getBookImageRecords(book).map((image) => image.path);
+  }
+
+  function getBookCategoryName(book) {
+    return book.Category && book.Category.name
+      ? book.Category.name
+      : "Uncategorized";
+  }
+
+  function renderCategoryOptions(categoryId = "") {
+    const options = ['<option value="">Select Category</option>'];
+
+    categories.forEach((category) => {
+      const isSelected = String(category.id) === String(categoryId);
+      options.push(
+        `<option value="${category.id}" ${isSelected ? "selected" : ""}>${escapeHtml(category.name)}</option>`,
+      );
+    });
+
+    $("#bookCategory").html(options.join(""));
+    selectedCategoryId = categoryId || "";
+  }
+
+  function fetchCategories() {
+    $.ajax({
+      method: "GET",
+      url: `${url}/api/v1/categories`,
+      dataType: "json",
+      headers: { Authorization: "Bearer " + token },
+      success: function (data) {
+        categories = data.rows || [];
+        renderCategoryOptions(selectedCategoryId);
+      },
+      error: function () {
+        categories = [];
+        renderCategoryOptions("");
+      },
+    });
   }
 
   // Get records
@@ -196,6 +235,7 @@ $(document).ready(function () {
     formData.append("description", $("#desc").val());
     formData.append("price", $("#price").val());
     formData.append("isbn", $("#isbn").val());
+    formData.append("category_id", $("#bookCategory").val());
     formData.append("quantity", $("#qty").val());
     formData.append(
       "existing_images",
@@ -253,6 +293,7 @@ $(document).ready(function () {
         <td>${escapeHtml(book.author)}</td>
         <td>PHP ${escapeHtml(book.price)}</td>
         <td>${escapeHtml(book.isbn)}</td>
+        <td>${escapeHtml(getBookCategoryName(book))}</td>
         <td>${stockHtml}</td>
         <td>
           <button class="btn btn-sm btn-outline-primary editBtn" data-id="${book.book_id}"><i class="fas fa-edit"></i></button>
@@ -277,7 +318,7 @@ $(document).ready(function () {
 
         if (currentPage === 1 && books.length === 0) {
           $("#bbody").html(
-            '<tr><td colspan="8" class="text-center text-muted py-4">No books found.</td></tr>',
+            '<tr><td colspan="9" class="text-center text-muted py-4">No books found.</td></tr>',
           );
         } else {
           $("#bbody").append(books.map(renderBookRow).join(""));
@@ -346,6 +387,7 @@ $(document).ready(function () {
     $("#bform").trigger("reset");
     clearValidationState($("#bform"));
     resetImageQueue();
+    renderCategoryOptions("");
     $("#bookUpdate").hide();
     $("#bookSubmit").show();
     $("#bookModal").modal("show");
@@ -492,6 +534,9 @@ $(document).ready(function () {
         $("#desc").val(book.description);
         $("#price").val(book.price);
         $("#isbn").val(book.isbn);
+        renderCategoryOptions(
+          book.category_id || (book.Category ? book.Category.id : ""),
+        );
         $("#qty").val(book.Stock ? book.Stock.quantity : 0);
 
         existingImages = getBookImageRecords(book);
@@ -536,5 +581,6 @@ $(document).ready(function () {
     );
   });
 
+  fetchCategories();
   refreshBooks();
 });

@@ -1,6 +1,7 @@
 const db = require("../models");
 const { Op } = require("sequelize");
 const Book = db.Book;
+const Category = db.Category;
 const Stock = db.Stock;
 const BookImage = db.BookImage;
 
@@ -166,6 +167,11 @@ exports.getAllBooks = async (req, res) => {
       include: [
         { model: Stock },
         {
+          model: Category,
+          attributes: ["id", "name"],
+          required: false,
+        },
+        {
           model: BookImage,
           where: { is_main: true },
           required: false,
@@ -245,7 +251,15 @@ exports.autocompleteBooks = async (req, res) => {
 exports.getSingleBook = async (req, res) => {
   try {
     const book = await Book.findByPk(req.params.id, {
-      include: [{ model: Stock }, { model: BookImage }],
+      include: [
+        { model: Stock },
+        {
+          model: Category,
+          attributes: ["id", "name"],
+          required: false,
+        },
+        { model: BookImage },
+      ],
     });
 
     if (!book) {
@@ -266,7 +280,8 @@ exports.createBook = async (req, res, next) => {
   const transaction = await db.sequelize.transaction();
 
   try {
-    const { title, author, description, price, isbn, quantity } = req.body;
+    const { title, author, description, price, isbn, quantity, category_id } =
+      req.body;
     const imagePaths = normalizeFilePaths(req.files);
     const mainImagePath = normalizeMainImage(
       imagePaths,
@@ -284,6 +299,8 @@ exports.createBook = async (req, res, next) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
+    const normalizedCategoryId = parseInt(category_id, 10);
+
     const book = await Book.create(
       {
         title,
@@ -291,6 +308,9 @@ exports.createBook = async (req, res, next) => {
         description,
         price,
         isbn,
+        category_id: Number.isInteger(normalizedCategoryId)
+          ? normalizedCategoryId
+          : null,
         img_path: JSON.stringify(orderedImagePaths),
         created_at: Date.now(),
       },
@@ -336,7 +356,8 @@ exports.updateBook = async (req, res, next) => {
 
   try {
     const { id } = req.params;
-    const { title, author, description, price, isbn, quantity } = req.body;
+    const { title, author, description, price, isbn, quantity, category_id } =
+      req.body;
     const uploadedFiles = req.files || [];
     const submittedExistingImagePaths = parseJsonArray(
       req.body.existing_images,
@@ -356,12 +377,17 @@ exports.updateBook = async (req, res, next) => {
       return res.status(404).json({ error: "Book not found" });
     }
 
+    const normalizedCategoryId = parseInt(category_id, 10);
+
     const updateData = {
       title,
       author,
       description,
       price,
       isbn,
+      category_id: Number.isInteger(normalizedCategoryId)
+        ? normalizedCategoryId
+        : null,
     };
 
     await ensureLegacyBookImages(
