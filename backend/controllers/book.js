@@ -11,6 +11,12 @@ function parsePositiveInt(value, fallback) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+// Parse offset
+function parseNonNegativeInt(value, fallback) {
+  const parsed = parseInt(value, 10);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
 // Sort order
 function getSortOrder(value) {
   return String(value || "DESC").toUpperCase() === "ASC" ? "ASC" : "DESC";
@@ -30,6 +36,19 @@ function getBookSortColumn(value) {
   };
 
   return sortColumns[value] || sortColumns.id;
+}
+
+// DataTables column map
+function getDataTablesSortColumn(columnIndex) {
+  const columnMap = {
+    0: "book_id",
+    2: "title",
+    3: "author",
+    4: "price",
+    5: "isbn",
+  };
+
+  return columnMap[columnIndex] || "book_id";
 }
 
 // Parse images
@@ -158,11 +177,21 @@ async function ensureLegacyBookImages(book, existingImagePaths, transaction) {
 // Fetch books
 exports.getAllBooks = async (req, res) => {
   try {
-    const page = parsePositiveInt(req.query.page, 1);
-    const limit = parsePositiveInt(req.query.limit, 0);
-    const sortBy = getBookSortColumn(req.query.sortBy || "id");
-    const sortOrder = getSortOrder(req.query.sortOrder || "DESC");
-    const search = String(req.query.search || "").trim();
+    const draw = parseNonNegativeInt(req.query.draw, 0);
+    const start = parseNonNegativeInt(req.query.start, 0);
+    const length = parsePositiveInt(req.query.length, 10);
+    const searchValue = req.query.search
+      ? String(req.query.search.value || "").trim()
+      : "";
+    const orderEntry =
+      req.query.order && req.query.order[0] ? req.query.order[0] : null;
+    const sortBy = getDataTablesSortColumn(
+      orderEntry ? parseInt(orderEntry.column, 10) : 0,
+    );
+    const sortOrder = getSortOrder(orderEntry ? orderEntry.dir : "desc");
+
+    const recordsTotal = await Book.count();
+
     const queryOptions = {
       include: [
         { model: Stock },
@@ -179,32 +208,27 @@ exports.getAllBooks = async (req, res) => {
       ],
       order: [[sortBy, sortOrder]],
       distinct: true,
+      offset: start,
+      limit: length,
     };
 
-    if (search) {
+    if (searchValue) {
       queryOptions.where = {
         [Op.or]: [
-          { title: { [Op.substring]: search } },
-          { author: { [Op.substring]: search } },
-          { isbn: { [Op.substring]: search } },
+          { title: { [Op.substring]: searchValue } },
+          { author: { [Op.substring]: searchValue } },
+          { isbn: { [Op.substring]: searchValue } },
         ],
       };
-    }
-
-    if (limit > 0) {
-      // Offset limit
-      queryOptions.limit = limit;
-      queryOptions.offset = (page - 1) * limit;
     }
 
     const result = await Book.findAndCountAll(queryOptions);
 
     return res.status(200).json({
-      rows: result.rows,
-      count: result.count,
-      page,
-      limit: limit || result.count,
-      hasMore: limit > 0 ? page * limit < result.count : false,
+      draw: parseInt(draw, 10),
+      recordsTotal,
+      recordsFiltered: result.count,
+      data: result.rows,
     });
   } catch (error) {
     console.log(error);

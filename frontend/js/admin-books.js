@@ -1,19 +1,12 @@
 $(document).ready(function () {
   const url = `http://${window.location.hostname}:3000`;
-  const limit = 25;
-  let currentPage = 1;
-  let isFetching = false;
-  let hasMoreBooks = true;
-  let currentSortBy = "id";
-  let currentSortOrder = "DESC";
-  let searchQuery = "";
-  let searchDebounceTimer = null;
   let selectedImages = [];
   let existingImages = [];
   let deletedImageIds = [];
   let selectedMainCover = null;
   let categories = [];
   let selectedCategoryId = "";
+  let booksTable = null;
 
   const rawToken = sessionStorage.getItem("token");
   const token = rawToken ? rawToken.replace(/"/g, "") : null;
@@ -277,110 +270,79 @@ $(document).ready(function () {
       : '<span class="badge bg-secondary">No Image</span>';
   }
 
-  // Render row
-  function renderBookRow(book) {
+  // Stock badge
+  function renderStockBadge(book) {
     const qty = book.Stock ? book.Stock.quantity : 0;
-    const stockHtml =
-      qty > 0
-        ? `<span class="badge bg-success">${qty}</span>`
-        : '<span class="badge bg-danger">Out of Stock</span>';
+    return qty > 0
+      ? `<span class="badge bg-success">${qty}</span>`
+      : '<span class="badge bg-danger">Out of Stock</span>';
+  }
 
+  // Action buttons
+  function renderActionButtons(book) {
     return `
-      <tr data-id="${book.book_id}">
-        <td>${book.book_id}</td>
-        <td>${getCoverImage(book)}</td>
-        <td>${escapeHtml(book.title)}</td>
-        <td>${escapeHtml(book.author)}</td>
-        <td>PHP ${escapeHtml(book.price)}</td>
-        <td>${escapeHtml(book.isbn)}</td>
-        <td>${escapeHtml(getBookCategoryName(book))}</td>
-        <td>${stockHtml}</td>
-        <td>
-          <button class="btn btn-sm btn-outline-primary editBtn" data-id="${book.book_id}"><i class="fas fa-edit"></i></button>
-          <button class="btn btn-sm btn-outline-danger deleteBtn" data-id="${book.book_id}"><i class="fas fa-trash-alt"></i></button>
-        </td>
-      </tr>
+      <button class="btn btn-sm btn-outline-primary editBtn" data-id="${book.book_id}"><i class="fas fa-edit"></i></button>
+      <button class="btn btn-sm btn-outline-danger deleteBtn" data-id="${book.book_id}"><i class="fas fa-trash-alt"></i></button>
     `;
   }
 
-  // Fetch books
-  function fetchBooks() {
-    if (isFetching || !hasMoreBooks) return;
-
-    isFetching = true;
-
-    $.ajax({
-      method: "GET",
-      url: `${url}/api/v1/books?page=${currentPage}&limit=${limit}&sortBy=${currentSortBy}&sortOrder=${currentSortOrder}&search=${encodeURIComponent(searchQuery)}`,
-      dataType: "json",
-      success: function (data) {
-        const books = data.rows || [];
-
-        if (currentPage === 1 && books.length === 0) {
-          $("#bbody").html(
-            '<tr><td colspan="9" class="text-center text-muted py-4">No books found.</td></tr>',
-          );
-        } else {
-          $("#bbody").append(books.map(renderBookRow).join(""));
-        }
-
-        hasMoreBooks = Boolean(data.hasMore);
-        currentPage += 1;
+  // Init table
+  function initBooksTable() {
+    booksTable = $("#btable").DataTable({
+      serverSide: true,
+      processing: true,
+      ajax: {
+        url: `${url}/api/v1/books`,
+        headers: { Authorization: "Bearer " + token },
+        error: function () {
+          Swal.fire({ icon: "error", text: "Unable to load books." });
+        },
       },
-      error: function () {
-        Swal.fire({ icon: "error", text: "Unable to load books." });
-      },
-      complete: function () {
-        isFetching = false;
+      columns: [
+        { data: "book_id" },
+        {
+          data: null,
+          orderable: false,
+          render: (data, type, book) => getCoverImage(book),
+        },
+        {
+          data: "title",
+          render: (data) => escapeHtml(data),
+        },
+        {
+          data: "author",
+          render: (data) => escapeHtml(data),
+        },
+        {
+          data: "price",
+          render: (data) => `PHP ${escapeHtml(data)}`,
+        },
+        {
+          data: "isbn",
+          render: (data) => escapeHtml(data),
+        },
+        {
+          data: null,
+          orderable: false,
+          render: (data, type, book) => escapeHtml(getBookCategoryName(book)),
+        },
+        {
+          data: null,
+          orderable: false,
+          render: (data, type, book) => renderStockBadge(book),
+        },
+        {
+          data: null,
+          orderable: false,
+          render: (data, type, book) => renderActionButtons(book),
+        },
+      ],
+      order: [[0, "desc"]],
+      language: {
+        emptyTable: "No books found.",
       },
     });
   }
-
-  // Refresh books
-  function refreshBooks() {
-    currentPage = 1;
-    hasMoreBooks = true;
-    isFetching = false;
-    $("#bbody").empty();
-    fetchBooks();
-  }
-
-  $(".custom-table-scroll").on("scroll", function () {
-    // Check scroll bottom
-    if (
-      Math.ceil($(this).scrollTop() + $(this).innerHeight()) >=
-      $(this)[0].scrollHeight - 5
-    ) {
-      fetchBooks();
-    }
-  });
-
-  $("#btable").on("click", "th.sortable", function () {
-    const sortBy = $(this).data("sort");
-
-    if (currentSortBy === sortBy) {
-      currentSortOrder = currentSortOrder === "ASC" ? "DESC" : "ASC";
-    } else {
-      currentSortBy = sortBy;
-      currentSortOrder = "ASC";
-    }
-
-    currentPage = 1;
-    hasMoreBooks = true;
-    isFetching = false;
-    $("#bbody").empty();
-    fetchBooks();
-  });
-
-  $(".admin-search").on("input", function () {
-    clearTimeout(searchDebounceTimer);
-    searchQuery = $(this).val().trim();
-
-    // Debounce search
-    searchDebounceTimer = setTimeout(function () {
-      refreshBooks();
-    }, 300);
-  });
 
   $("#addBookBtn").on("click", function () {
     $("#bookId").remove();
@@ -487,7 +449,7 @@ $(document).ready(function () {
       processData: false,
       success: function () {
         $("#bookModal").modal("hide");
-        refreshBooks();
+        booksTable.ajax.reload(null, false);
         Swal.fire({
           icon: "success",
           title: isUpdate ? "Updated!" : "Added!",
@@ -554,7 +516,6 @@ $(document).ready(function () {
   $("#btable tbody").on("click", ".deleteBtn", function (e) {
     e.preventDefault();
     const id = $(this).data("id");
-    const $row = $(this).closest("tr");
 
     bootbox.confirm(
       "Are you sure you want to delete this book?",
@@ -565,9 +526,7 @@ $(document).ready(function () {
           method: "DELETE",
           url: `${url}/api/v1/books/${id}`,
           success: function () {
-            $row.fadeOut(300, function () {
-              $(this).remove();
-            });
+            booksTable.ajax.reload(null, false);
             Swal.fire({ icon: "success", text: "Book deleted", timer: 1500 });
           },
           error: function (error) {
@@ -582,5 +541,5 @@ $(document).ready(function () {
   });
 
   fetchCategories();
-  refreshBooks();
+  initBooksTable();
 });
